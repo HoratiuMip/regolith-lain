@@ -1,0 +1,1 @@
+#define RGH_BRP_IMPLEMENTED

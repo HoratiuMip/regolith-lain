@@ -1,0 +1,1 @@
+#define RGH_OSP_IMPLEMENTED

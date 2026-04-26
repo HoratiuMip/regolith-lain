@@ -1,0 +1,179 @@
+cmake_minimum_required( VERSION 3.28.0 )
+
+## EXCOM dependencies.
+set( _excom_dir "${CMAKE_CURRENT_LIST_DIR}/excom" )
+
+## Build RGH.
+file( GLOB _source_files "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp" )
+add_library( RGH_OSp STATIC ${_source_files} )
+target_link_libraries( RGH_OSp 
+    PUBLIC RGH_BRp 
+    PUBLIC RGH_GEp
+)
+target_include_directories( RGH_OSp PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" )
+
+# Spdlog
+RGH_Fnc_PopExcom( "Spdlog" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_SPDLOG )
+
+    RGH_Fnc_CloneRepo( "https://github.com/gabime/spdlog.git" "v1.15.3" spdlog "${_excom_dir}" )
+    target_link_libraries( RGH_OSp 
+        PUBLIC spdlog 
+    )
+    target_include_directories( RGH_OSp
+        PUBLIC "${_excom_dir}/spdlog/include"
+    )
+endif()
+# OpenGL
+RGH_Fnc_PopExcom( "OpenGL" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_OPENGL )
+
+    set( GLFW_INSTALL OFF CACHE BOOL "" FORCE )
+
+    RGH_Fnc_CloneRepo( "https://github.com/g-truc/glm.git" "1.0.1" glm "${_excom_dir}" )
+    RGH_Fnc_CloneRepo( "https://github.com/glfw/glfw.git" "3.4" glfw "${_excom_dir}" )
+    RGH_Fnc_CloneRepo( "https://github.com/Perlmint/glew-cmake.git" "glew-cmake-2.2.0" glew "${_excom_dir}" )
+    target_link_libraries( RGH_OSp
+        PUBLIC glm
+        PUBLIC glfw
+        PUBLIC libglew_static
+    )
+    target_include_directories( RGH_OSp
+        PUBLIC "${_excom_dir}/glm"
+        PUBLIC "${_excom_dir}/glfw/include"
+        PUBLIC "${_excom_dir}/glew/include"
+    )
+endif()
+# STB
+RGH_Fnc_PopExcom( "STB" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_STB )
+
+    RGH_Fnc_CloneRepo( "https://github.com/nothings/stb.git" "" stb "${_excom_dir}" )
+ 
+    target_include_directories( RGH_OSp
+        PUBLIC "${_excom_dir}/stb"
+    )
+endif()
+# TinyOBJ
+RGH_Fnc_PopExcom( "TinyOBJ" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_TINYOBJ )
+
+    RGH_Fnc_CloneRepo( "https://github.com/tinyobjloader/tinyobjloader.git" "v1.0.6" tinyobj "${_excom_dir}" )
+
+    target_include_directories( RGH_OSp
+        PUBLIC "${_excom_dir}/tinyobj"
+    )
+endif()
+# NlohmannJSON
+RGH_Fnc_PopExcom( "NlohmannJSON" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_NLOHMANNJSON )
+
+    RGH_Fnc_CloneRepo( "https://github.com/nlohmann/json.git" "v3.12.0" nlohmann_json "${_excom_dir}" )
+
+    target_link_libraries( RGH_OSp
+        PUBLIC nlohmann_json
+    )
+    target_include_directories( RGH_OSp
+        PUBLIC "${_excom_dir}/nlohmann_json/include"
+    )
+endif()
+# Dear ImGUI
+RGH_Fnc_PopExcom( "Dear ImGUI" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_DEARIMGUI )
+
+    RGH_Fnc_CloneRepo( "https://github.com/ocornut/imgui.git" "v1.91.9-docking" imgui "${_excom_dir}" )
+    RGH_Fnc_CloneRepo( "https://github.com/epezent/implot.git" "v0.16" implot "${_excom_dir}" )
+    RGH_Fnc_JustCloneRepo( "https://github.com/aiekick/ImGuiFileDialog.git" "v0.6.8" imgui_file_dialog "${_excom_dir}" )
+
+    file( GLOB _imgui_source_files "${_excom_dir}/imgui/*.cpp" )
+    add_library( ImGui STATIC 
+        ${_imgui_source_files} 
+        "${_excom_dir}/imgui/misc/cpp/imgui_stdlib.cpp" 
+        "${_excom_dir}/imgui/backends/imgui_impl_opengl3.cpp" 
+        "${_excom_dir}/imgui/backends/imgui_impl_glfw.cpp" 
+    )
+    target_include_directories( ImGui 
+        PUBLIC "${_excom_dir}/imgui/" 
+        PUBLIC "${_excom_dir}/imgui/misc/cpp/"
+        PUBLIC "${_excom_dir}/imgui/backends/"
+        PUBLIC "${_excom_dir}/glfw/include"
+    )
+
+    file( GLOB _implot_source_files "${_excom_dir}/implot/*.cpp" )
+    add_library( ImPlot STATIC ${_implot_source_files} )
+    target_include_directories( ImPlot PUBLIC "${_excom_dir}/imgui/" )
+    target_include_directories( ImPlot PUBLIC "${_excom_dir}/implot/" )
+
+    file( GLOB _imgui_file_dialog_source_files "${_excom_dir}/imgui_file_dialog/*.cpp" )
+    add_library( ImFileDialog STATIC ${_imgui_file_dialog_source_files} )
+    target_include_directories( ImFileDialog PUBLIC "${_excom_dir}/imgui/" )
+    target_include_directories( ImFileDialog PUBLIC "${_excom_dir}/imgui_file_dialog/" )
+
+    add_library( One_ImGui INTERFACE )
+    target_link_libraries( One_ImGui INTERFACE
+        ImGui
+        ImPlot
+        ImFileDialog
+    )
+
+    target_link_libraries( RGH_OSp
+        PUBLIC One_ImGui
+    )
+    target_include_directories( RGH_OSp
+        PUBLIC "${_excom_dir}/imgui"
+        PUBLIC "${_excom_dir}/implot"
+    )
+endif()
+
+# LAPACK
+RGH_Fnc_PopExcom( "LAPACK" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_LAPACK )
+
+    cmake_policy( SET CMP0079 NEW )
+    set( LAPACKE ON )
+    RGH_Fnc_CloneRepo( "https://github.com/Reference-LAPACK/lapack.git" "v3.12.0" lapack "${_excom_dir}" )
+
+    target_link_libraries( RGH_OSp
+        PUBLIC lapacke
+        PUBLIC lapack
+        PUBLIC blas
+    )
+   
+    target_include_directories( RGH_OSp
+        PUBLIC "${_excom_dir}/lapack/LAPACKE/include"
+        PUBLIC "${lapack_BINARY_DIR}/include"
+    )
+endif()
+
+if( RGH_Opt_TargetOS_Windows )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_TARGET_OS_WINDOWS )
+
+    target_link_libraries( RGH_OSp 
+        PUBLIC "-lwinmm"
+        PUBLIC "-ld2d1"
+        PUBLIC "-lole32"
+        PUBLIC "-lComdlg32"
+        PUBLIC "-lDwrite"
+        PUBLIC "-lwindowscodecs"
+        PUBLIC "-lopengl32"
+        PUBLIC "-lglu32"
+        PUBLIC "-lgdi32"
+        PUBLIC "-lws2_32"
+        PUBLIC "-lwsock32"
+        PUBLIC "-lbthprops"
+        PUBLIC "-lcrypt32"
+        PUBLIC "-lcfgmgr32"
+        PUBLIC "-lsetupapi"
+        PUBLIC "libcomctl32.a"
+        PUBLIC "libcomdlg32.a"
+    )
+elseif( RGH_Opt_TargetOS_Linux )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_TARGET_OS_LINUX )
+endif()
