@@ -23,13 +23,16 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 #define _RGH_PROTECTED protected
 #define _RGH_PRIVATE   private
 
-#define RGH_ASSERT_OR( cond ) if( !(cond) )
+#define RGH_ASSERT_OR(c)            if( !(c) )
+#define RGH_ASSERT_AND(c)           if((c))
+#define RGH_ASSERT_STATUS_OR(c)     if(rgh::status_t status_=(c);RGH_OK!=status_)
+#define RGH_ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR(c) {return status_;}
 
 #define RGH_STRUCT_HAS_OVR( obj, fnc ) ((void*)((obj).*(&fnc))!=(void*)(&fnc))
 
 
 #ifndef _BV
-    #define _BV(b) (0x1<<b)
+    #define _BV(b) (0x1ull<<b)
 #endif
 #ifndef _SBV
     #define _SBV(x,b) (x|=b)
@@ -64,12 +67,7 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 
 namespace rgh {
 
-
 typedef   int   status_t;
-
-#define RGH_PULL_STATUS(call) (status=(call))
-#define RGH_ASSERT_STATUS_OR(c) if(rgh::status_t status_=(c);RGH_OK!=status_)
-#define RGH_ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR(c) {return status_;}
 
 #define RGH_OK               0x0
 #define RGH_ERR_GENERAL      -0x1
@@ -89,14 +87,15 @@ typedef   int   status_t;
 #define RGH_ERR_TIMEOUT      -0xF
 #define RGH_ERR_TERMINATED   -0x10
 #define RGH_ERR_INTERRUPTED  -0x11
+#define RGH_ERR_NO_RESOLVE   -0x12
 
-inline static const char* const status_msgs[] = {
+inline static const char* const _status_msgs[] = {
     "OK", "GENERAL", "SYSCALL", "WOULD_OVRWR", "OPEN",
     "EXCOMCALL", "LOGIC", "USERCALL", "PLATFORMCALL", "BADARG",
     "FLOW", "NOT_IMPL", "BUSY", "NOT_FOUND", "ENGINECALL",
-    "TERMINATED"
+    "TERMINATED", "NO_RESOLVE"
 };
-#define RGH_STATUS_MSG( s ) (rgh::status_msgs[-(s)])
+#define RGH_STATUS_MSG(s) (rgh::_status_msgs[-(s)])
 
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}
 

@@ -66,7 +66,8 @@ public:
 
 public:
     RGH_inline bool compound_is_up( void ) {
-        return State_STARTED == _compound_state.load( std::memory_order_relaxed );
+        State_ state = _compound_state.load( std::memory_order_relaxed );
+        return State_STARTED == state || State_STARTING == state;
     }
 
     RGH_inline bool compound_is_stable( void ) {

@@ -276,9 +276,7 @@ public:
                 break; }
 
                 case _sym_t::Typ_Defr: {
-                    _prec_t_ res;
-                    RGH_ASSERT_OR( RGH_OK == this->_defr( sym.val, &res ) ) return RGH_ERR_USERCALL;
-
+                    _prec_t_ res; RGH_ASSERT_STATUS_OR_RET( this->_defr( sym.val, &res ) );
                     rslvstk[ ++rslvtop ] = res;
                 break; }
                 

@@ -137,7 +137,7 @@ if( RGH_Flag_ExcomActive )
     target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_LAPACK )
 
     cmake_policy( SET CMP0079 NEW )
-    set( LAPACKE ON )
+    set( LAPACKE ON CACHE BOOL "[RGH] OSp - LAPACKE." FORCE )
     RGH_Fnc_CloneRepo( "https://github.com/Reference-LAPACK/lapack.git" "v3.12.0" lapack "${_excom_dir}" )
 
     target_link_libraries( RGH_OSp

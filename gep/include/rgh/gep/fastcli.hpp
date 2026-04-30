@@ -153,7 +153,7 @@ public:
             }
 
             RGH_ASSERT_OR( bad_cvt == nullptr ) {
-                *_ctx->out += std::format( "Cannot convert \"{}\" to {} required by option \"{}\".\n", *_ctx->arg_tok, bad_cvt, *_ctx->opt_tok );
+                *_ctx->out += std::format( "fast-cli: bad convert \"{}\" to {} required by option \"{}\".\n", *_ctx->arg_tok, bad_cvt, *_ctx->opt_tok );
                 return false;
             }
             return true;
@@ -294,7 +294,7 @@ _RGH_PROTECTED:
 
             if( _is_esc_chr( c ) ) {
                 RGH_ASSERT_OR( RGH_OK == _resolve_esc_chr( ctx_ ) ) {
-                    *ctx_->out += std::format( "Bad escape character near {}.\n", ctx_->id0 );
+                    *ctx_->out += std::format( "fast-cli: bad escape near {}.\n", ctx_->id0 );
                     return RGH_ERR_BADARG;
                 }
                 continue;
@@ -314,12 +314,12 @@ _RGH_PROTECTED:
                 continue;
             }
 
-            *ctx_->out += std::format( "Bad character near {}.\n", ctx_->id0 );
+            *ctx_->out += std::format( "fast-cli: bad character near {}.\n", ctx_->id0 );
             return RGH_ERR_BADARG;
         }
 
         if( ctx_->in_qte ) {
-            *ctx_->out += std::format( "Some quotes not closed properly.\n", ctx_->id0 );
+            *ctx_->out += std::format( "fast-cli: bad quotes.\n", ctx_->id0 );
             return RGH_ERR_BADARG;
         }
 
@@ -332,7 +332,7 @@ _RGH_PROTECTED:
             return ctx_->toks[ 0x0 ] == cmd_.text; 
         } );
         RGH_ASSERT_OR( itr != _cmd_map.end() ) {
-            *ctx_->out += std::format( "Unknown command \"{}\".\n", ctx_->toks[ 0x0 ] );
+            *ctx_->out += std::format( "fast-cli: unknown command \"{}\".\n", ctx_->toks[ 0x0 ] );
             return RGH_ERR_BADARG;
         }
 
@@ -353,11 +353,10 @@ public:
         };
         ctx.toks.reserve( 0x4 );
 
-        status_t status = _split_cmd( &ctx );
-        RGH_ASSERT_OR( status == RGH_OK ) return status;
+        RGH_ASSERT_STATUS_OR_RET( _split_cmd( &ctx ) );
 
         RGH_ASSERT_OR( not ctx.toks.empty() ) {
-            *out_ += "Empty command line."; return RGH_ERR_BADARG;
+            *out_ += "fast-cli: no tokens."; return RGH_ERR_BADARG;
         }
 
         std::shared_lock lck{ _cmd_map_mtx };
@@ -386,19 +385,19 @@ inline char Fast_cli::stencil_t::next( void ) {
     } else {
         opt = _ctx->cmd->opt_by_fast( _fid++ );
         RGH_ASSERT_OR( opt != nullptr ) {
-            *_ctx->out += std::format( "Cannot resolve token \"{}\".\n", opt_tok );
+            *_ctx->out += std::format( "fast-cli: unresolvable token \"{}\".\n", opt_tok );
             _RET_ERR;
         }
         goto l_fast_skip;
     }
 
     RGH_ASSERT_OR( opt != nullptr ) {
-        *_ctx->out += std::format( "Unknown option \"{}\".\n", opt_tok );
+        *_ctx->out += std::format( "fast-cli: unresolvable option \"{}\".\n", opt_tok );
         _RET_ERR;
     }
     ++_ctx->id0;
     if( opt->arg != Arg_flag ) { RGH_ASSERT_OR( _ctx->id0 < _ctx->toks.size() ) {
-        *_ctx->out += std::format( "Missing argument(s) for option \"{}\".\n", opt_tok );
+        *_ctx->out += std::format( "fast-cli: missing argument(s) for option \"{}\".\n", opt_tok );
         _RET_ERR;
     } } else {
         return opt->sh0rt;
@@ -424,7 +423,7 @@ l_fast_skip:
             
         l_toks_consumed:
             RGH_ASSERT_OR( once ) {
-                *_ctx->out += std::format( "Missing or bad argument(s) for option \"{}\".\n", opt->l0ng );
+                *_ctx->out += std::format( "fast-cli: missing or bad argument(s) for option \"{}\".\n", opt->l0ng );
                 _RET_ERR;
             }
         break; }
