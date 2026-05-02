@@ -23,6 +23,16 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 #define _RGH_PROTECTED protected
 #define _RGH_PRIVATE   private
 
+#ifdef __EXCEPTIONS
+    #define _RGH_EXCEPTIONS
+
+    #define _rgh_try try
+    #define _rgh_catch( scope_ ) catch(...) scope_
+#else
+    #define _rgh_try
+    #define _rgh_catch( scope_ )
+#endif
+
 #define RGH_ASSERT_OR(c)            if( !(c) )
 #define RGH_ASSERT_AND(c)           if((c))
 #define RGH_ASSERT_STATUS_OR(c)     if(rgh::status_t status_=(c);RGH_OK!=status_)
@@ -88,12 +98,13 @@ typedef   int   status_t;
 #define RGH_ERR_TERMINATED   -0x10
 #define RGH_ERR_INTERRUPTED  -0x11
 #define RGH_ERR_NO_RESOLVE   -0x12
+#define RGH_ERR_BADALLOC     -0x13
 
 inline static const char* const _status_msgs[] = {
     "OK", "GENERAL", "SYSCALL", "WOULD_OVRWR", "OPEN",
     "EXCOMCALL", "LOGIC", "USERCALL", "PLATFORMCALL", "BADARG",
     "FLOW", "NOT_IMPL", "BUSY", "NOT_FOUND", "ENGINECALL",
-    "TERMINATED", "NO_RESOLVE"
+    "TERMINATED", "NO_RESOLVE", "BADALLOC"
 };
 #define RGH_STATUS_MSG(s) (rgh::_status_msgs[-(s)])
 
