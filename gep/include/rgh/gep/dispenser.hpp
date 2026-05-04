@@ -12,7 +12,7 @@ namespace rgh {
 
 enum DispenserMode_ {
     DispenserMode_Lock, DispenserMode_Trylock,
-    DispenserMode_Drop, 
+    DispenserMode_Drop, DispenserMode_DropInterval,
     DispenserMode_Swap, DispenserMode_ReverseSwap,
 };
 
@@ -26,6 +26,11 @@ struct dispenser_config_t {
     uint32_t   flags   = 0x0;
 };
 
+RGH_inline int64_t dispenser_clock( void ) {
+    using namespace std::chrono;
+    return duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
+}
+
 template< typename _T_ > class Dispenser {
 public:
     template< typename, bool > friend struct _dispenser_acquire;
@@ -36,8 +41,9 @@ public:
     using control_t   = _dispenser_acquire< _T_, true >;
 
 public:
-    Dispenser( const DispenserMode_ mode_, const dispenser_config_t& config_ = {} ) 
-    : _mode{ mode_ }, _config{ config_ }, _M_{ mode_ } 
+    template< typename... _VARGS_ >
+    Dispenser( const DispenserMode_ mode_, const dispenser_config_t& config_ = {}, _VARGS_&&... vargs_ ) 
+    : _mode{ mode_ }, _config{ config_ }, _M_{ mode_, std::forward< _VARGS_ >( vargs_ )... } 
     {}
 
     ~Dispenser( void ) {
@@ -48,6 +54,9 @@ public:
             break; }
             case DispenserMode_Drop: {
                 _M_.drop.~_drop_mode_t();
+            break; }
+            case DispenserMode_DropInterval: {
+                _M_.drop_int.~_drop_int_mode_t();
             break; }
             case DispenserMode_Swap: [[fallthrough]]; 
             case DispenserMode_ReverseSwap: {
@@ -61,24 +70,31 @@ _RGH_PROTECTED:
     dispenser_config_t   _config;
 
     union _M_t { 
-        _M_t( const DispenserMode_ mode_ ) {
+        template< typename... _VARGS_ >
+        _M_t( const DispenserMode_ mode_, _VARGS_&&... vargs_ ) {
             switch( mode_ ) {
                 case DispenserMode_Lock: [[fallthrough]];
                 case DispenserMode_Trylock:
-                    new ( &lock.block ) HVec< _T_ >      { HVec< _T_ >::make() };
+                    new ( &lock.block ) HVec< _T_ >      { HVec< _T_ >::make( std::forward< _VARGS_ >( vargs_ )... ) };
                     new ( &lock.mtx )   std::shared_mutex{};
-                    break;
+                break;
                 case DispenserMode_Drop:
-                    //new ( &drop.block ) HVec< _T_ >{ HVec< _T_ >::make() };
-                    break;
+                    new ( &drop.block ) HVec< _T_ >{};
+                break;
+                case DispenserMode_DropInterval: 
+                    new ( &drop_int.block ) HVec< _T_ >            {};
+                    new ( &drop_int.cv )    std::condition_variable{};
+                    new ( &drop_int.mtx )   std::mutex             {};
+                    new ( &drop_int.born )  int64_t                { -0x1 };
+                break; 
                 case DispenserMode_Swap: [[fallthrough]];
                 case DispenserMode_ReverseSwap:
-                    new ( &swap.blocks[ 0x0 ] ) HVec< _T_ >         { HVec< _T_ >::make() };
-                    new ( &swap.blocks[ 0x1 ] ) HVec< _T_ >         { HVec< _T_ >::make() };
+                    new ( &swap.blocks[ 0x0 ] ) HVec< _T_ >         { HVec< _T_ >::make( std::forward< _VARGS_ >( vargs_ )... ) };
+                    new ( &swap.blocks[ 0x1 ] ) HVec< _T_ >         { HVec< _T_ >::make( std::forward< _VARGS_ >( vargs_ )... ) };
                     new ( &swap.mtxs[ 0x0 ] )   std::shared_mutex   {};
                     new ( &swap.mtxs[ 0x1 ] )   std::shared_mutex   {};
                     new ( &swap.ctl_idx )       std::atomic_uint8_t { 0x0 };
-                    break;
+                break;
             }
         } 
         ~_M_t( void ) {}
@@ -90,6 +106,12 @@ _RGH_PROTECTED:
         struct _drop_mode_t {
             HVec< _T_ >   block;
         } drop;
+        struct _drop_int_mode_t {
+            HVec< _T_ >                        block;
+            std::condition_variable            cv;
+            std::mutex                         mtx;        
+            int64_t                            born;
+        } drop_int;
         struct _swap_mode_t {
             HVec< _T_ >            blocks[ 2 ];
             std::shared_mutex      mtxs[ 2 ];
@@ -119,6 +141,7 @@ public:
             case DispenserMode_Lock: [[fallthrough]];
             case DispenserMode_Trylock: return _M_.lock.block;
             case DispenserMode_Drop: return _M_.drop.block;
+            case DispenserMode_DropInterval: return _M_.drop_int.block;
             case DispenserMode_Swap: [[fallthrough]];
             case DispenserMode_ReverseSwap: return _M_.swap.blocks[ _M_.swap.ctl_idx.load( std::memory_order_relaxed ) ];
         }
@@ -130,6 +153,7 @@ public:
             case DispenserMode_Lock: [[fallthrough]];
             case DispenserMode_Trylock: return _M_.lock.block.get();
             case DispenserMode_Drop: return _M_.drop.block.get();
+            case DispenserMode_DropInterval: return _M_.drop_int.block.get();
             case DispenserMode_Swap: [[fallthrough]];
             case DispenserMode_ReverseSwap: return _M_.swap.blocks[ _M_.swap.ctl_idx.load( std::memory_order_relaxed ) ].get();
         }
@@ -144,7 +168,7 @@ public:
 template< typename _T_, bool _IS_CONTROL_ > struct _dispenser_acquire {
 public:
     template< typename ..._VARGS_ >
-    [[gnu::hot]] _dispenser_acquire( Dispenser< _T_ >& disp_, _VARGS_&&... args_ ) : _disp{ &disp_ }, _M_{ disp_._mode }  {
+    [[gnu::hot]] _dispenser_acquire( Dispenser< _T_ >& disp_, _VARGS_&&... vargs_ ) : _disp{ &disp_ }, _M_{ disp_._mode }  {
         switch( _disp->_mode ) {
             case DispenserMode_Lock: {
                 if constexpr( _IS_CONTROL_ ) {
@@ -162,9 +186,26 @@ public:
             break; }
             case DispenserMode_Drop: {
                 if constexpr( _IS_CONTROL_ ) { 
-                    _M_.drop.block = HVec< _T_ >::make( std::forward< _VARGS_ >( args_ )... );
+                    _M_.drop.block = HVec< _T_ >::make( std::forward< _VARGS_ >( vargs_ )... );
                 } else {
                     _M_.drop.block = _disp->_M_.drop.block;
+                }
+            break; }
+            case DispenserMode_DropInterval: {
+                if constexpr( _IS_CONTROL_ ) { 
+                    _M_.drop.block = HVec< _T_ >::make( std::forward< _VARGS_ >( vargs_ )... );
+                } else if constexpr( sizeof...( vargs_ ) > 0 ) {
+                    auto vargs    = std::forward_as_tuple( std::forward< _VARGS_ >( vargs_ )... );
+                    auto max_age  = static_cast< int64_t >( std::get< 0x0 >( vargs ) );
+                    auto wait_for = static_cast< int64_t >( std::get< 0x1 >( vargs )  );
+
+                    auto& d_M = _disp->_M_.drop_int;
+                    
+                    std::unique_lock lck{ d_M.mtx };
+                    if( dispenser_clock() - d_M.born <= max_age ) { _M_.drop.block = d_M.block; break; }
+                    
+                    RGH_ASSERT_OR( std::cv_status::no_timeout == d_M.cv.wait_for( lck, std::chrono::milliseconds{ wait_for } ) ) break;
+                    _M_.drop.block = d_M.block;
                 }
             break; }
             case DispenserMode_Swap: {
@@ -211,7 +252,8 @@ public:
             break; }
             case DispenserMode_Trylock: {
             break; }
-            case DispenserMode_Drop: {
+            case DispenserMode_Drop: [[fallthrough]];
+            case DispenserMode_DropInterval: {
                 _M_.drop.block = std::move( other_._M_.drop.block );
             break; }
             case DispenserMode_Swap: [[fallthrough]];
@@ -250,6 +292,19 @@ public:
                     _M_.drop.block.reset();
                 }
             break; }
+            case DispenserMode_DropInterval: {
+                if constexpr( _IS_CONTROL_ ) {
+                    using namespace std::chrono;
+
+                    std::unique_lock lck{ _disp->_M_.drop_int.mtx };
+                    _disp->_M_.drop_int.block = std::move( _M_.drop.block );
+                    _disp->_M_.drop_int.born  = dispenser_clock();
+
+                    _disp->_M_.drop_int.cv.notify_all();
+                } else {
+                    _M_.drop.block.reset();
+                }
+            break; }
             case DispenserMode_Swap: {
                 if constexpr( _IS_CONTROL_ ) {
                     _disp->_M_.swap.ctl_idx.store( _M_.swap.ctl_idx, std::memory_order_release );
@@ -276,7 +331,8 @@ public:
 
     void drop( void ) {
         switch( _disp->_mode ) {
-            case DispenserMode_Drop: {
+            case DispenserMode_Drop: [[fallthrough]];
+            case DispenserMode_DropInterval: {
                 _M_.drop.block.reset();
                 _disp = nullptr;
             break; }
@@ -292,15 +348,16 @@ _RGH_PROTECTED:
                 case DispenserMode_Lock: break;
                 case DispenserMode_Trylock:
                     new ( &trylock.acq ) bool{ false };
-                    break;
-                case DispenserMode_Drop:
-                    new ( &drop.block ) HVec< _T_ >{ HVec< _T_ >::make() };
-                    break;
+                break;
+                case DispenserMode_Drop: [[fallthrough]];
+                case DispenserMode_DropInterval:
+                    new ( &drop.block ) HVec< _T_ >{};
+                break;
                 case DispenserMode_Swap: [[fallthrough]];
                 case DispenserMode_ReverseSwap:
                     new ( &swap.block )   _T_*   { nullptr };
                     new ( &swap.ctl_idx ) uint8_t{ 0x0 };
-                    break;
+                break;
             }
         } 
         ~_M_t( void ) {}
@@ -322,7 +379,8 @@ public:
         switch( _disp->_mode ) {
             case DispenserMode_Lock: [[fallthrough]];
             case DispenserMode_Trylock: return _disp->_M_.lock.block.get();
-            case DispenserMode_Drop: return _M_.drop.block.get();
+            case DispenserMode_Drop: [[fallthrough]];
+            case DispenserMode_DropInterval: return _M_.drop.block.get();
             case DispenserMode_Swap: [[fallthrough]];
             case DispenserMode_ReverseSwap: return _M_.swap.block;
         }
@@ -334,10 +392,13 @@ public:
     RGH_inline _T_& operator * ( void ) { return *this->get(); }
 
 public:
-    RGH_inline operator bool ( void ) {
+    RGH_inline operator bool ( void ) const {
         switch( _disp->_mode ) {
-            case DispenserMode_Trylock: return _M_.trylock.acq;
-            case DispenserMode_Drop: return _M_.drop.block != nullptr;
+            case DispenserMode_Trylock: 
+                return _M_.trylock.acq;
+            case DispenserMode_Drop: [[fallthrough]];
+            case DispenserMode_DropInterval:
+                return _M_.drop.block != nullptr;
         }
         return true;
     }
