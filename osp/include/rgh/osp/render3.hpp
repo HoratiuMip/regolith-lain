@@ -71,7 +71,7 @@ inline constexpr const char* const ShaderPhase_FILE_EXTENSION[ ShaderPhase_COUNT
 
 
 enum MeshFlag_ {
-    MeshFlag_MakePipe = _BV( 0x0 )
+    MeshFlag_MakePipe = BV( 0x0 )
 };
 
 struct unif_t {
@@ -903,7 +903,7 @@ _RGH_PROTECTED:
 
         //         for( auto& burst : sub.bursts ) {
         //             float* diffuse = _mtls[ burst.mtl_idx ].data.diffuse;
-        //             Kd.uplink_bv( glm::vec3{ diffuse[ 0 ], diffuse[ 1 ], diffuse[ 2 ] } );
+        //             Kd.uplinkBV( glm::vec3{ diffuse[ 0 ], diffuse[ 1 ], diffuse[ 2 ] } );
 
         //             for( size_t tex_idx : _mtls[ burst.mtl_idx ].tex_idxs ) {
         //                 if( tex_idx == -1 ) continue;

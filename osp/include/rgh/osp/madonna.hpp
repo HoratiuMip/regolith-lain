@@ -38,17 +38,29 @@ public:
     RGH_inline operator const _prec_t_* ( void ) const { return this->get(); }
 
 public:
-    _prec_t_ norm( void ) const {
+    _prec_t_ norm_sq( void ) const {
         _prec_t_ res = 0;
         for( size_t c = 0x0; c < _N_; ++c ) res += std::pow( (*this)[c], 2 );
         return std::sqrt( res );
     }
 
+    RGH_inline _prec_t_ norm( void ) const {
+        return std::sqrt( this->norm_sq() );
+    }
+
 public:
     _prec_t_ dot( const auto& rhs_ ) const {
         _prec_t_ res = 0;
-        for( size_t c = 0x0; c < _N_ && c < rhs_.size(); ++c ) res += (*this)[c] * rhs_[c];
+        for( size_t c = 0x0; c < _N_; ++c ) res += (*this)[c] * rhs_[c];
         return res;
+    }
+
+    RGH_inline _prec_t_ dist( const auto& rhs_ ) const {
+        return (*this -  rhs_).norm();
+    }
+
+    RGH_inline _prec_t_ dist_sq( const auto& rhs_ ) const {
+        return (*this -  rhs_).norm_sq();
     }
 
 public:
@@ -69,7 +81,7 @@ public:
 #define _MDN_ARR_OP_(o) \
     arr_t< _N_, _prec_t_ > operator o ( const auto& rhs_ ) const { \
         arr_t< _N_, _prec_t_ > res; \
-        for( size_t c = 0x0; c < _N_ && c < rhs_.size(); ++c ) { \
+        for( size_t c = 0x0; c < _N_; ++c ) { \
             res[ c ] = (*this)[c] o rhs_[c]; \
         } \
         return res; \
@@ -94,7 +106,7 @@ public:
 #undef _MDN_ARR_OPE_
 #define _MDN_ARR_OPE_(oe) \
     arr_t< _N_, _prec_t_ > & operator oe ( const auto& rhs_ ) { \
-        for( size_t c = 0x0; c < _N_ && c < rhs_.size(); ++c ) { \
+        for( size_t c = 0x0; c < _N_; ++c ) { \
             (*this)[c] oe rhs_[c]; \
         } \
         return *this; \

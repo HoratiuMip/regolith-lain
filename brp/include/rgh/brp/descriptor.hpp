@@ -38,20 +38,24 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 #define RGH_ASSERT_STATUS_OR(c)     if(rgh::status_t status_=(c);RGH_OK!=status_)
 #define RGH_ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR(c) {return status_;}
 
+#ifndef RGH_NO_EZ_ASSERTS
+    #define ASSERT_OR(c) RGH_ASSERT_OR(c)
+#endif
+
 #define RGH_STRUCT_HAS_OVR( obj, fnc ) ((void*)((obj).*(&fnc))!=(void*)(&fnc))
 
 
-#ifndef _BV
-    #define _BV(b) (0x1ull<<b)
+#ifndef BV
+    #define BV(b) (0x1ull<<b)
 #endif
-#ifndef _SBV
-    #define _SBV(x,b) (x|=b)
+#ifndef SBV
+    #define SBV(x,b) (x|=b)
 #endif
-#ifndef _RBV
-    #define _RBV(x,b) (x&=~b)
+#ifndef RBV
+    #define RBV(x,b) (x&=~b)
 #endif
-#ifndef _FBV
-    #define _FBV(x,f,b) (f?_SBV(x,b):_RBV(x,b))
+#ifndef FBV
+    #define FBV(x,f,b) (f?_SBV(x,b):_RBV(x,b))
 #endif
 #ifndef SET
     #define SET 0x1

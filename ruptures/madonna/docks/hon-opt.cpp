@@ -1,5 +1,5 @@
 #include <bridge.hpp>
-MDN_MODULE_HEADER( honoptdiff, "hon-opt-diff" )
+MDN_MODULE_HEADER( honopt, "hon-opt" )
 
 struct Dock : dock_t {
 public:
@@ -13,7 +13,9 @@ public:
         "Cnj-PR",
         "Cnj-HS",
         "QN-DFP",
-        "QN-BFGS"
+        "QN-BFGS",
+        "Rosen",
+        "Nel-Md"
     };
     inline static constexpr int METHOD_COUNT = sizeof( METHODS ) / sizeof( const char* );
     enum Method_ {
@@ -23,14 +25,17 @@ public:
         Method_ConjugatePr,
         Method_ConjugateHs,
         Method_QuasiNewtonDFP,
-        Method_QuasiNewtonBFGS
+        Method_QuasiNewtonBFGS,
+        Method_Rosenbrock,
+
+        Method_NelderMead
     };
 
 public:
     struct _ex_t {
         _ex_t( void ) = default;
 
-         _ex_t( string_view in_exp_ )
+         _ex_t( string_view in_exp_, const ImPlotRect& lims_ )
         : exp{ in_exp_ }
         {
             f = [ this ] ( double x1, double x2 ) {
@@ -44,8 +49,8 @@ public:
                 return res;
             };
 
-            constexpr double step = 0.1;
-            grid.span_s( { { step, -8, 8 }, { step, 8, -8 } } );
+            constexpr int steps = 680;
+            grid.span_n( { { steps, lims_.X.Min, lims_.X.Max }, { steps, lims_.Y.Max, lims_.Y.Min } } );
             grid.apply( [ this ] ( double* x ) -> double { return f( x[0], x[1] ); } );
         }
 
@@ -55,21 +60,35 @@ public:
     };
 
 public:
-    Dispenser< _ex_t >   ex                           = { DispenserMode_Drop };    
-
+    Dispenser< _ex_t >   ex                           = { DispenserMode_Drop };   
+    int                  slices                       = 100;
+    ImPlotRect           limits                       = { -1, 1, -1, 1 };
+    atomic_bool          updating                     = { false };
+ 
     string               in_exp;
 
     int                  step_count[ METHOD_COUNT ]   = { 0 };
     int                  all_step_count               = 0;
+    bool                 controlled[ 2 ]              = { false, false };
 
     arr_t<2>             grad;
     arr_t<4>             hess;
     arr_t<2>             x0                           = { 0, 0 };
 
-public:
-    void compute_gradient( arr_t<2> X ) { grad = d1_f2( X[0], X[1], 1e-6, ex->f ); }
+    arr_t<2>             v0[ 3 ]                      = { 0 };
 
-    void compute_hessian( arr_t<2> X ) { hess = d2h_f2( X[0], X[1], 1e-6, ex->f ); }
+public:
+    void compute_gradient( arr_t<2> X ) { 
+        grad = d1_f2( X[0], X[1], 1e-6, ex->f ); 
+    }
+
+    void compute_hessian( arr_t<2> X ) { 
+        hess = d2h_f2( X[0], X[1], 1e-6, ex->f ); 
+    }
+
+    void plot_trig( const char* lbl_, arr_t<2> v_[], int stride_ ) {
+        ImPlot::PlotLine( lbl_, &v_[0][0], &v_[0][1], 3, ImPlotLineFlags_Loop, 0, stride_ );
+    }
 
 public:
     MDN_DOCK_NAME_FNC override { return DOCK_NAME; }
@@ -81,28 +100,50 @@ public:
         if( ImGui::Begin( "Diff Optimizations", &open, ImGuiWindowFlags_None ) ) {
             ImGui::Separator();
             ImGui::TextUnformatted( "f(x1,x2) =" ); ImGui::SameLine();
-            const bool new_exp = ImGui::InputText( "##in-exp", &in_exp, ImGuiInputTextFlags_EnterReturnsTrue );
+            bool new_exp = ImGui::InputText( "##in-exp", &in_exp, ImGuiInputTextFlags_EnterReturnsTrue );
             ImGui::Separator();
 
             if( ex ) {
                 ImPlot::PushColormap( ImPlotColormap_Viridis );
                 if( ImPlot::BeginPlot( "##plt-f", {680, 680} ) ) {
-                    if( ImPlot::IsPlotHovered() && ImGui::IsMouseDown( ImGuiMouseButton_Left ) && ImGui::IsKeyDown( ImGuiKey_LeftCtrl ) ) {
-                        auto p = ImPlot::GetPlotMousePos();
-                        x0 = { p.x, p.y };
+                    if( ImPlot::IsPlotHovered() && ImGui::IsKeyDown( ImGuiKey_LeftCtrl ) ) {
+                        controlled[ 0x0 ] = ImGui::IsKeyDown( ImGuiKey_1 );
+                        controlled[ 0x1 ] = ImGui::IsKeyDown( ImGuiKey_2 ); 
+
+                        if( ImGui::IsMouseDown( ImGuiMouseButton_Left ) ) {
+                            auto p = ImPlot::GetPlotMousePos();
+
+                            if( controlled[ 0x0 ] ) {
+                                x0 = { p.x, p.y };
+                            }
+
+                            if( controlled[ 0x1 ] ) {
+                                *std::min_element( v0, v0+3, [ &p ] ( const auto& v1_, const auto& v2_ ) -> bool {
+                                    return v1_.dist_sq( p ) < v2_.dist_sq( p );
+                                } ) = { p.x, p.y };
+                            }
+                        }
+                    } else {
+                        fill_n( controlled, size( controlled ), 0x0 );
                     }
                     
                     ImPlot::PlotHeatmap(
                         "##htm-f", ex->grid.raw(), ex->grid.n_of(1), ex->grid.n_of(0),
-                        ex->grid.min(), ex->grid.max(), nullptr, {-8,-8}, {8,8},
+                        ex->grid.min(), ex->grid.max(), nullptr, { limits.X.Min, limits.Y.Min }, { limits.X.Max, limits.Y.Max },
                         ImPlotHeatmapFlags_None
                     );
 
+                    const auto new_limits = ImPlot::GetPlotLimits();
+                    if( memcmp( &new_limits, &limits, sizeof( limits ) != 0x0 ) ) {
+                        limits = new_limits;
+                        new_exp |= true;
+                    }
+
                     ImPlot::PushColormap( ImPlotColormap_Twilight );
                     ImPlot::PushStyleVar( ImPlotStyleVar_LineWeight, 3.0f );
-                    ImPlot::PushStyleColor( ImPlotCol_MarkerFill, ImVec4{ 1,1,1,1 } );
+                    const auto ctrl_sin = sin( args_.t*5.6 );
 
-                    /* === Newton === */ {
+                    /* =-. Newton .-= */ {
                     auto xk = x0;
                     for( int n = 1; n <= step_count[ Method_Newton ]; ++n ) {
                         compute_gradient( xk ); 
@@ -123,7 +164,7 @@ public:
                     }
                     }
 
-                    /* === Steepest === */ {
+                    /* =-. Steepest .-= */ {
                     auto xk = x0;
                     for( int n = 1; n <= step_count[ Method_Steepest ]; ++n ) {
                         compute_gradient( xk );
@@ -144,7 +185,7 @@ public:
                     }
                     }
 
-                    /* === Conjugate FR === */ {
+                    /* =-. Conjugate FR .-= */ {
                     auto             xk = x0;
                     arr_t<2>  dk = { 0, 0 };
                     double           bk = 0;
@@ -174,7 +215,7 @@ public:
                     }
                     }
 
-                    /* === Conjugate PR === */ {
+                    /* =-. Conjugate PR .-= */ {
                     auto             xk = x0;
                     arr_t<2>  dk = { 0, 0 };
                     double           bk = 0;
@@ -204,7 +245,7 @@ public:
                     }
                     }
 
-                    /* === Conjugate HS === */ {
+                    /* =-. Conjugate HS .-= */ {
                     auto             xk = x0;
                     arr_t<2>  dk = { 0, 0 };
                     double           bk = 0;
@@ -234,7 +275,7 @@ public:
                     }
                     }
 
-                    /* === Quasi Newton DFP === */ {
+                    /* =-. Quasi Newton DFP .-= */ {
                     auto            xk = x0;
                     double          k  = 0;
                     arr_t<4> B  = { 1,0, 0,1 };
@@ -285,7 +326,7 @@ public:
                     }
                     }
 
-                    /* === Quasi Newton BFGS === */ {
+                    /* =-. Quasi Newton BFGS .-= */ {
                     auto            xk = x0;
                     double          k  = 0;
                     arr_t<4> B  = { 1,0, 0,1 };
@@ -336,9 +377,105 @@ public:
                     }
                     }
 
+                    /* =-. Rosenbrock .-= */ {
+                    arr_t<2> d[ 2 ] = { { 1.0, 0.0 }, { 0.0, 1.0 } };
+                    arr_t<2> s      = { 1.0, 1.0 };
+                    double   a      = 0.5;
+                    double   b      = -0.5;
+                    auto     xk     = x0;
+
+                    for( int n = 1; n <= step_count[ Method_Rosenbrock ]; ++n ) {
+                        double   c[ 2 ]       = { 0, 0 };
+                        bool     osc          = false;
+                        bool     success[ 2 ] = { false, false };
+                        bool     fail[ 2 ]    = { false, false };
+                        arr_t<2> xk1;
+
+                        while( not osc ) {
+                            for( int i = 0; i < 2; ++i ) {
+                                if( ex->f( xk + d[i]*s[i] ) < ex->f( xk ) ) {
+                                    xk1 = xk + d[i]*s[i];
+
+                                    ImPlot::PlotLine( METHODS[ Method_Rosenbrock ], (double[2]){ xk.x(), xk1.x() }, (double[2]){ xk.y(), xk1.y() }, 2 );
+                                    if( ImPlot::IsLegendEntryHovered( METHODS[ Method_Rosenbrock ] ) ) {
+                                        ImPlot::PlotScatter( "", (double[2]){ xk.x(), xk1.x() }, (double[2]){ xk.y(), xk1.y() }, 2 );
+                                    }
+
+                                    xk = xk1;
+
+                                    success[i] =  true;
+                                    c[i]       += s[i]; 
+                                    s[i]       *= a;
+                                } else {
+                                    fail[ i ] =  true;
+                                    s[i]      *= b;
+                                }
+                            }
+                            osc = count( success, success+2, true ) == 2 && count( fail, fail+2, true ) == 2;
+                        }
+
+                        const auto a2 = d[1]*c[1]; 
+                        const auto a1 = d[0]*c[0] + a2;
+
+                        const auto b1 = a1;
+                        const auto b2 = a2 - b1 * (a2.dot(b1) / b1.norm());
+
+                        d[0] = b1 / b1.norm();
+                        d[1] = b2 / b2.norm();
+                    }
+                    }
+
+                    const float ctrl_0 = controlled[ 0x0 ] ? ctrl_sin : 1;
+                    ImPlot::PushStyleColor( ImPlotCol_MarkerFill, ImVec4{ 1, ctrl_0, ctrl_0, 1 } );
+                    ImPlot::PlotScatter( "", (double*)&x0, (double*)&x0 + 1, 1 );
                     ImPlot::PopStyleColor( 1 );
+
+                    /* =-. Nelder Mead .-= */ {
+                    struct point_t {
+                        arr_t<2>   vk;
+                        double     f;
+                    } points[ 3 ] = {
+                        { .vk = v0[ 0 ] }, { .vk = v0[ 1 ] }, { .vk = v0[ 2 ] }
+                    };  
+                    auto& B = points[0].vk, &G = points[1].vk, &W = points[2].vk;
+                    auto& fB = points[0].f, &fG = points[1].f, &fW = points[2].f;
+                    
+                    for( int n = 1; n <= step_count[ Method_NelderMead ]; ++n ) {
+                        for( auto& p : points ) p.f = ex->f( p.vk );
+                        std::sort( points, points+3, [] ( const auto& lhs_, const auto& rhs_ ) { return lhs_.f < rhs_.f; } );
+                        plot_trig( METHODS[ Method_NelderMead ], &points[0].vk, sizeof( point_t ) );
+                        
+                        const auto M  = (B+G) / 2;
+                        const auto R  = M*2 - W;
+                        const auto fr = ex->f( R );
+
+                        if( fr < fW ) {
+                            const auto E = R*2 - M;
+                            W = ex->f( E ) < fr ? E : R;
+                        } else {
+                            const auto C1 = (M+W) / 2;
+                            const auto C2 = (M+R) / 2;
+                            const auto C  = ex->f( C1 ) < ex->f( C2 ) ? C1 : C2;
+
+                            if( ex->f( C ) < fW ) {
+                                W = C;
+                            } else {
+                                const auto S = (B+W)/2;
+                                W = S;
+                                G = M;
+                            }
+                        }
+                    }
+                    }
+
+                    const float ctrl_1 = controlled[ 0x1 ] ? ctrl_sin : 1; 
+                    ImPlot::PushStyleColor( ImPlotCol_MarkerFill, ImVec4{ 1, ctrl_1, ctrl_1, 1 } );
+                    ImPlot::PlotScatter( "", (double*)&v0, (double*)&v0 + 1, 3, 0, 0, sizeof( v0[0] ) );
+                    ImPlot::PopStyleColor( 1 );
+                   
                     ImPlot::PopStyleVar( 1 );
                     ImPlot::PopColormap( 1 );
+
                     ImPlot::EndPlot();
                 }
 
@@ -367,13 +504,24 @@ public:
 
                 ImGui::EndTable();
 
-                ImGui::SeparatorText( "Initial guess" );
+                ImGui::SeparatorText( "Initial guess [ Point ]" );
                 ImGui::SetNextItemWidth( 680 );
                 ImGui::InputScalarN( "##in-ig", ImGuiDataType_Double, &x0, 2 );
+
+                ImGui::SeparatorText( "Initial guess [ Triangle ]" );
+                ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v1", ImGuiDataType_Double, v0, 2 );
+                ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v2", ImGuiDataType_Double, v0+1, 2 );
+                ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v3", ImGuiDataType_Double, v0+2, 2 );
             }
 
             if( new_exp ) {
-                thread( [ this ] { if( not in_exp.empty() ) this->ex.control( in_exp ); } ).detach();
+                bool upd_ex = false;
+                if( updating.compare_exchange_strong( upd_ex, true, std::memory_order_release ) ) {
+                    thread( [ this ] { 
+                        if( not in_exp.empty() ) this->ex.control( in_exp, limits ); 
+                        updating.store( false, std::memory_order_release );
+                    } ).detach();
+                }
             }
         } 
         ImGui::End();

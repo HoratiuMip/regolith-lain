@@ -197,7 +197,7 @@ public:
                 } else if constexpr( sizeof...( vargs_ ) > 0 ) {
                     auto vargs    = std::forward_as_tuple( std::forward< _VARGS_ >( vargs_ )... );
                     auto max_age  = static_cast< int64_t >( std::get< 0x0 >( vargs ) );
-                    auto wait_for = static_cast< int64_t >( std::get< 0x1 >( vargs )  );
+                    auto wait_for = static_cast< int64_t >( std::get< 0x1 >( vargs ) );
 
                     auto& d_M = _disp->_M_.drop_int;
                     
