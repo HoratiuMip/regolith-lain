@@ -3,6 +3,7 @@
 #include <rgh/gep/fastcli.hpp>
 #include <rgh/gep/fastexp.hpp>
 #include <rgh/gep/dispenser.hpp>
+#include <rgh/osp/thread_pool.hpp>
 using namespace rgh;
 
 #define RGH_MDN_REAL_T double
@@ -124,6 +125,7 @@ public:
     Immersive                                          imm           = {};
     
     Dispenser< map< string, HVec< var_t > > >          var_reg       = { DispenserMode_Lock };
+    Thread_pool                                        workers       = {};
 
 protected:
     atomic< status_t >                                 _status       = { RGH_ERR_TERMINATED };
@@ -132,6 +134,8 @@ protected:
     Dispenser< map< string_view, HVec< dock_t > > >    _docks        = { DispenserMode_Lock };
 
     thread                                             _th_guix      = {};
+
+
 
 public:
     RGH_inline auto status( void ) { return _status.load( memory_order_relaxed ); }
@@ -258,6 +262,8 @@ public:
             } );
         }
         docks.release();
+
+        workers.launch( 4 );
 
         logger->info( "bridge: started." );
         return RGH_OK;

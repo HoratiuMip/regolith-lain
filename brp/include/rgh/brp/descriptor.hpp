@@ -40,6 +40,7 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 
 #ifndef RGH_NO_EZ_ASSERTS
     #define ASSERT_OR(c) RGH_ASSERT_OR(c)
+    #define ASSERT_AND(c) RGH_ASSERT_AND(c)
 #endif
 
 #define RGH_STRUCT_HAS_OVR( obj, fnc ) ((void*)((obj).*(&fnc))!=(void*)(&fnc))

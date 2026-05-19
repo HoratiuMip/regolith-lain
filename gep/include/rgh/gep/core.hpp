@@ -47,4 +47,7 @@ struct HVec : public std::shared_ptr< _T_ > {
     RGH_inline static HVec< _T_ > make( Args_&&... args_ ) { return std::make_shared< _T_ >( std::forward< Args_ >( args_ )... ); }
 };
 
+template< typename _T_ >
+HVec< _T_ > make_hvec( _T_&& t_ ) { return HVec< _T_ >::make( std::move( t_ ) ); }
+
 };

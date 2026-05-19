@@ -97,7 +97,7 @@ public:
         auto ex = this->ex.watch();
 
         bool open = true;
-        if( ImGui::Begin( "Diff Optimizations", &open, ImGuiWindowFlags_None ) ) {
+        if( ImGui::Begin( "Hands-On Optimizations", &open, ImGuiWindowFlags_None ) ) {
             ImGui::Separator();
             ImGui::TextUnformatted( "f(x1,x2) =" ); ImGui::SameLine();
             bool new_exp = ImGui::InputText( "##in-exp", &in_exp, ImGuiInputTextFlags_EnterReturnsTrue );
@@ -139,7 +139,7 @@ public:
                         new_exp |= true;
                     }
 
-                    ImPlot::PushColormap( ImPlotColormap_Twilight );
+                    ImPlot::PushColormap( ImPlotColormap_PiYG );
                     ImPlot::PushStyleVar( ImPlotStyleVar_LineWeight, 3.0f );
                     const auto ctrl_sin = sin( args_.t*5.6 );
 
@@ -378,24 +378,23 @@ public:
                     }
 
                     /* =-. Rosenbrock .-= */ {
-                    arr_t<2> d[ 2 ] = { { 1.0, 0.0 }, { 0.0, 1.0 } };
-                    arr_t<2> s      = { 1.0, 1.0 };
-                    double   a      = 0.5;
-                    double   b      = -0.5;
-                    auto     xk     = x0;
+                    arr_t<2>     d[ 2 ] = { { 1.0, 0.0 }, { 0.0, 1.0 } };
+                    arr_t<2>     s      = { 1.0, 1.0 };
+                    const double a      = 1.5;
+                    const double b      = -0.5;
+                    auto         xk     = x0;
 
                     for( int n = 1; n <= step_count[ Method_Rosenbrock ]; ++n ) {
-                        double   c[ 2 ]       = { 0, 0 };
-                        bool     osc          = false;
-                        bool     success[ 2 ] = { false, false };
-                        bool     fail[ 2 ]    = { false, false };
-                        arr_t<2> xk1;
+                        double c[ 2 ]       = { 0, 0 };
+                        bool   success[ 2 ] = { false, false };
+                        bool   fail[ 2 ]    = { false, false };
+                        int    osc          = 0;
 
-                        while( not osc ) {
+                        while( ++osc <= step_count[ Method_Rosenbrock ] ) {
                             for( int i = 0; i < 2; ++i ) {
-                                if( ex->f( xk + d[i]*s[i] ) < ex->f( xk ) ) {
-                                    xk1 = xk + d[i]*s[i];
+                                const auto xk1 = xk + d[i]*s[i];
 
+                                if( ex->f( xk1 ) < ex->f( xk ) ) {
                                     ImPlot::PlotLine( METHODS[ Method_Rosenbrock ], (double[2]){ xk.x(), xk1.x() }, (double[2]){ xk.y(), xk1.y() }, 2 );
                                     if( ImPlot::IsLegendEntryHovered( METHODS[ Method_Rosenbrock ] ) ) {
                                         ImPlot::PlotScatter( "", (double[2]){ xk.x(), xk1.x() }, (double[2]){ xk.y(), xk1.y() }, 2 );
@@ -407,12 +406,13 @@ public:
                                     c[i]       += s[i]; 
                                     s[i]       *= a;
                                 } else {
-                                    fail[ i ] =  true;
-                                    s[i]      *= b;
+                                    fail[i] =  true;
+                                    s[i]    *= b;
                                 }
                             }
-                            osc = count( success, success+2, true ) == 2 && count( fail, fail+2, true ) == 2;
-                        }
+
+                            if( count( success, success+2, true ) == 2 && count( fail, fail+2, true ) == 2 ) break;
+                        } 
 
                         const auto a2 = d[1]*c[1]; 
                         const auto a1 = d[0]*c[0] + a2;
@@ -471,10 +471,10 @@ public:
                     const float ctrl_1 = controlled[ 0x1 ] ? ctrl_sin : 1; 
                     ImPlot::PushStyleColor( ImPlotCol_MarkerFill, ImVec4{ 1, ctrl_1, ctrl_1, 1 } );
                     ImPlot::PlotScatter( "", (double*)&v0, (double*)&v0 + 1, 3, 0, 0, sizeof( v0[0] ) );
-                    ImPlot::PopStyleColor( 1 );
+                    ImPlot::PopStyleColor();
                    
-                    ImPlot::PopStyleVar( 1 );
-                    ImPlot::PopColormap( 1 );
+                    ImPlot::PopStyleVar();
+                    ImPlot::PopColormap();
 
                     ImPlot::EndPlot();
                 }
@@ -517,10 +517,10 @@ public:
             if( new_exp ) {
                 bool upd_ex = false;
                 if( updating.compare_exchange_strong( upd_ex, true, std::memory_order_release ) ) {
-                    thread( [ this ] { 
+                    BridgE.workers.push( [ this ] { 
                         if( not in_exp.empty() ) this->ex.control( in_exp, limits ); 
                         updating.store( false, std::memory_order_release );
-                    } ).detach();
+                    } );
                 }
             }
         } 
