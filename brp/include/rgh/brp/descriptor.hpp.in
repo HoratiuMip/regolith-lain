@@ -109,6 +109,27 @@ inline static const char* const _status_msgs[] = {
 };
 #define RGH_STATUS_MSG(s) (rgh::_status_msgs[-(s)])
 
+#define OK               0x0
+#define ERR_GENERAL      -0x1
+#define ERR_SYSCALL      -0x2
+#define ERR_WOULD_OVRWR  -0x3
+#define ERR_OPEN         -0x4
+#define ERR_EXCOMCALL    -0x5
+#define ERR_LOGIC        -0x6
+#define ERR_USERCALL     -0x7
+#define ERR_PLATFORMCALL -0x8
+#define ERR_BADARG       -0x9
+#define ERR_FLOW         -0xA
+#define ERR_NOT_IMPL     -0xB
+#define ERR_BUSY         -0xC
+#define ERR_NOT_FOUND    -0xD
+#define ERR_ENGINECALL   -0xE
+#define ERR_TIMEOUT      -0xF
+#define ERR_TERMINATED   -0x10
+#define ERR_INTERRUPTED  -0x11
+#define ERR_NO_RESOLVE   -0x12
+#define ERR_BADALLOC     -0x13
+
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}
 
 struct MDsc {

@@ -77,6 +77,9 @@ public:
 
     arr_t<2>             v0[ 3 ]                      = { 0 };
 
+    double               rb_a                         = 1.5;
+    double               rb_b                         = -0.5;
+
 public:
     void compute_gradient( arr_t<2> X ) { 
         grad = d1_f2( X[0], X[1], 1e-6, ex->f ); 
@@ -378,11 +381,9 @@ public:
                     }
 
                     /* =-. Rosenbrock .-= */ {
-                    arr_t<2>     d[ 2 ] = { { 1.0, 0.0 }, { 0.0, 1.0 } };
-                    arr_t<2>     s      = { 1.0, 1.0 };
-                    const double a      = 1.5;
-                    const double b      = -0.5;
-                    auto         xk     = x0;
+                    arr_t<2> d[ 2 ] = { { 1.0, 0.0 }, { 0.0, 1.0 } };
+                    arr_t<2> s      = { 1.0, 1.0 };
+                    auto     xk     = x0;
 
                     for( int n = 1; n <= step_count[ Method_Rosenbrock ]; ++n ) {
                         double c[ 2 ]       = { 0, 0 };
@@ -404,10 +405,10 @@ public:
 
                                     success[i] =  true;
                                     c[i]       += s[i]; 
-                                    s[i]       *= a;
+                                    s[i]       *= rb_a;
                                 } else {
                                     fail[i] =  true;
-                                    s[i]    *= b;
+                                    s[i]    *= rb_b;
                                 }
                             }
 
@@ -504,14 +505,22 @@ public:
 
                 ImGui::EndTable();
 
-                ImGui::SeparatorText( "Initial guess [ Point ]" );
-                ImGui::SetNextItemWidth( 680 );
-                ImGui::InputScalarN( "##in-ig", ImGuiDataType_Double, &x0, 2 );
+                ImGui::SeparatorText( "Configuration" );
 
-                ImGui::SeparatorText( "Initial guess [ Triangle ]" );
-                ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v1", ImGuiDataType_Double, v0, 2 );
-                ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v2", ImGuiDataType_Double, v0+1, 2 );
-                ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v3", ImGuiDataType_Double, v0+2, 2 );
+                ImGui::BeginChild( "##configuration" );
+                    ImGui::SeparatorText( "Initial guess, point" );
+                    ImGui::SetNextItemWidth( 680 );
+                    ImGui::InputScalarN( "##in-ig", ImGuiDataType_Double, &x0, 2 );
+
+                    ImGui::SeparatorText( "Initial guess, triangle" );
+                    ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v1", ImGuiDataType_Double, v0, 2 );
+                    ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v2", ImGuiDataType_Double, v0+1, 2 );
+                    ImGui::SetNextItemWidth( 680 ); ImGui::InputScalarN( "v3", ImGuiDataType_Double, v0+2, 2 );
+
+                    ImGui::SeparatorText( "Rosenbrock parameters" );
+                    ImGui::SetNextItemWidth( 680 ); ImGui::InputScalar( "a", ImGuiDataType_Double, &rb_a ); rb_a = std::clamp( rb_a, 1.0, 100.0 );
+                    ImGui::SetNextItemWidth( 680 ); ImGui::InputScalar( "b", ImGuiDataType_Double, &rb_b ); rb_b = std::clamp( rb_b, -1.0, 0.0 );
+                ImGui::EndChild();
             }
 
             if( new_exp ) {

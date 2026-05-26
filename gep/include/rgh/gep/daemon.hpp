@@ -1,6 +1,6 @@
 #pragma once
 /**
- * @file: gep/compound.hpp
+ * @file: gep/daemon.hpp
  * @brief: 
  * @details
  * @authors: Vatca "Mipsan" Tudor-Horatiu
@@ -10,75 +10,75 @@
 
 namespace rgh {
 
-class Compound {
+class Daemon {
 public:
     enum State_ {
         State_STOPPED, State_STARTED, State_STOPPING, State_STARTING
     };
 
 _RGH_PROTECTED:
-    std::atomic< State_ >   _compound_state   = { State_STOPPED };
+    std::atomic< State_ >   _daemon_state   = { State_STOPPED };
 
 _RGH_PROTECTED:
-    virtual status_t _compound_start( void* ctx_ ) = 0;
+    virtual status_t _daemon_start( void* ctx_ ) = 0;
 
-    virtual status_t _compound_stop( void* ctx_ ) = 0;
-
-public:
-    virtual std::string_view compound_name( void ) const = 0;
+    virtual status_t _daemon_stop( void* ctx_ ) = 0;
 
 public:
-    status_t compound_start( void* ctxu_ = nullptr, void* ctxud_ = nullptr ) {
+    virtual std::string_view daemon_name( void ) const = 0;
+
+public:
+    status_t daemon_start( void* ctxu_ = nullptr, void* ctxud_ = nullptr ) {
         State_ es = State_STOPPED;
-        RGH_ASSERT_OR( _compound_state.compare_exchange_strong( es, State_STARTING, std::memory_order_release ) ) {
+        RGH_ASSERT_OR( _daemon_state.compare_exchange_strong( es, State_STARTING, std::memory_order_release ) ) {
             return RGH_ERR_WOULD_OVRWR;
         }
       
-        status_t status = this->_compound_start( ctxu_ );
+        status_t status = this->_daemon_start( ctxu_ );
         RGH_ASSERT_OR( RGH_OK == status ) {
-            this->_compound_stop( ctxud_ );
-            _compound_state.store( State_STOPPED, std::memory_order_release );
+            this->_daemon_stop( ctxud_ );
+            _daemon_state.store( State_STOPPED, std::memory_order_release );
             return status;
         }
-        _compound_state.store( State_STARTED, std::memory_order_release );
+        _daemon_state.store( State_STARTED, std::memory_order_release );
         return RGH_OK;
     }
 
-    status_t compound_stop( void* ctxd_ = nullptr ) {
+    status_t daemon_stop( void* ctxd_ = nullptr ) {
         State_ es = State_STARTED;
-        RGH_ASSERT_OR( _compound_state.compare_exchange_strong( es, State_STOPPING, std::memory_order_release ) ) {
+        RGH_ASSERT_OR( _daemon_state.compare_exchange_strong( es, State_STOPPING, std::memory_order_release ) ) {
             return RGH_ERR_WOULD_OVRWR;
         }
 
-        status_t status = this->_compound_stop( ctxd_ );
+        status_t status = this->_daemon_stop( ctxd_ );
         RGH_ASSERT_OR( RGH_OK == status ) {
-            _compound_state.store( State_STOPPED, std::memory_order_release );
+            _daemon_state.store( State_STOPPED, std::memory_order_release );
             return status;
         }
-        _compound_state.store( State_STOPPED, std::memory_order_release );
+        _daemon_state.store( State_STOPPED, std::memory_order_release );
         return RGH_OK;
     }
 
-    virtual status_t compound_restart( void* ctxd_ = nullptr, void* ctxu_ = nullptr, void* ctxud_ = nullptr ) {
-        (void)this->compound_stop( ctxd_ );
-        return this->compound_start( ctxu_, ctxud_ );
+    virtual status_t daemon_restart( void* ctxd_ = nullptr, void* ctxu_ = nullptr, void* ctxud_ = nullptr ) {
+        (void)this->daemon_stop( ctxd_ );
+        return this->daemon_start( ctxu_, ctxud_ );
     }
 
 public:
-    RGH_inline bool compound_is_up( void ) {
-        State_ state = _compound_state.load( std::memory_order_relaxed );
+    RGH_inline bool daemon_is_up( void ) {
+        State_ state = _daemon_state.load( std::memory_order_relaxed );
         return State_STARTED == state || State_STARTING == state;
     }
 
-    RGH_inline bool compound_is_stable( void ) {
-        State_ state = _compound_state.load( std::memory_order_relaxed );
+    RGH_inline bool daemon_is_stable( void ) {
+        State_ state = _daemon_state.load( std::memory_order_relaxed );
         return state != State_STOPPING and state != State_STARTING;
     }
 };
 
-class Compound_cluster {
+class Daemon_cluster {
 public:
-    typedef   std::function< void( HVec< Compound > ) >   critical_fnc_t;
+    typedef   std::function< void( HVec< Daemon > ) >   critical_fnc_t;
 
 public:
     struct restart_if_args_t {
@@ -86,24 +86,24 @@ public:
     };
 
     struct entry_t {
-        typedef   std::function< status_t( Compound&, const restart_if_args_t& ) >   restart_if_fnc_t;
+        typedef   std::function< status_t( Daemon&, const restart_if_args_t& ) >   restart_if_fnc_t;
 
-        HVec< Compound >                  ref                   = nullptr;
-        std::vector< HVec< Compound > >   deps                  = {};
-        bool                              keep_alive            = false;
-        restart_if_fnc_t                  restart_if            = nullptr;
-        int                               critical_n_restarts   = -1;
-        void*                             ctxu                  = nullptr;
-        void*                             ctxd                  = nullptr;
-        void*                             ctxud                 = nullptr;
+        HVec< Daemon >                  ref                   = nullptr;
+        std::vector< HVec< Daemon > >   deps                  = {};
+        bool                            keep_alive            = false;
+        restart_if_fnc_t                restart_if            = nullptr;
+        int                             critical_n_restarts   = -1;
+        void*                           ctxu                  = nullptr;
+        void*                           ctxd                  = nullptr;
+        void*                           ctxud                 = nullptr;
 
-        mutable int                       _failed_restart_cnt   = 0;
+        mutable int                     _failed_restart_cnt   = 0;
     };
 
 _RGH_PROTECTED:
     struct _entry_compare_t {
         bool operator () ( const entry_t& lhs_, const entry_t& rhs_ ) const { 
-            return lhs_.ref->compound_name() < rhs_.ref->compound_name();
+            return lhs_.ref->daemon_name() < rhs_.ref->daemon_name();
         }
     };
 
@@ -116,7 +116,7 @@ _RGH_PROTECTED:
 public:
     void when_critical( const critical_fnc_t& crit_fnc_ ) { _crit_fnc = crit_fnc_; }
 
-    void go_critical( HVec< Compound > cmpd_ ) {
+    void go_critical( HVec< Daemon > cmpd_ ) {
         bool exflag = false;
         RGH_ASSERT_OR( _crit_flag.compare_exchange_strong( exflag, true, std::memory_order_seq_cst ) ) return;
         if( _crit_fnc ) this->_crit_fnc( std::move( cmpd_ ) );
@@ -134,7 +134,7 @@ public:
     status_t pop( std::string_view name_ ) {
         auto reg = _register.control();
         return std::erase_if( *reg, [ &name_ ] ( const entry_t& entry_ ) -> bool {
-            return name_ == entry_.ref->compound_name();
+            return name_ == entry_.ref->daemon_name();
         } ) > 0 ? RGH_OK : RGH_ERR_NOT_FOUND;
     }
 
@@ -143,21 +143,21 @@ public:
         auto reg = _register.watch();
 
         for( auto& entry : *reg ) {
-            RGH_ASSERT_OR( entry.ref->compound_is_stable() ) continue;
+            RGH_ASSERT_OR( entry.ref->daemon_is_stable() ) continue;
 
             int up_deps = 0;
-            for( auto& dep : entry.deps ) up_deps += dep->compound_is_up();
+            for( auto& dep : entry.deps ) up_deps += dep->daemon_is_up();
             RGH_ASSERT_OR( up_deps == entry.deps.size() ) continue;
             
             const bool needs_restart = 
-                ( entry.keep_alive && not entry.ref->compound_is_up() )
+                ( entry.keep_alive && not entry.ref->daemon_is_up() )
                 ||
                 ( RGH_OK != entry.restart_if( *entry.ref, {
                     .attempt = entry._failed_restart_cnt
                 } ) );
 
             if( needs_restart ) {
-                RGH_ASSERT_OR( RGH_OK == entry.ref->compound_restart( entry.ctxd, entry.ctxu, entry.ctxud ) ) {
+                RGH_ASSERT_OR( RGH_OK == entry.ref->daemon_restart( entry.ctxd, entry.ctxu, entry.ctxud ) ) {
                     ++entry._failed_restart_cnt;
 
                     if( entry.critical_n_restarts != -1 && entry._failed_restart_cnt >= entry.critical_n_restarts ) {
