@@ -47,6 +47,9 @@ struct HVec : public std::shared_ptr< _T_ > {
     RGH_inline static HVec< _T_ > make( Args_&&... args_ ) { return std::make_shared< _T_ >( std::forward< Args_ >( args_ )... ); }
 
     RGH_inline bool operator == ( const _T_* ptr_ ) const { return this->get() == ptr_; }
+
+    RGH_inline operator _T_& ( void ) { return **this; }
+    RGH_inline operator const _T_& ( void ) const { return **this; }
 };
 
 template< typename _T_ >
