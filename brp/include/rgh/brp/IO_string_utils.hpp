@@ -11,6 +11,20 @@
 
 namespace rgh { namespace io {
 
+struct wifi_rssi_str_t {
+    wifi_rssi_str_t( int32_t rssi_ ) {
+        buf[ 0x0 ] = rssi_ >= -90 ? '|' : '.';
+        buf[ 0x1 ] = rssi_ >= -80 ? '|' : '.';
+        buf[ 0x2 ] = rssi_ >= -70 ? '|' : '.';
+        buf[ 0x3 ] = rssi_ >= -60 ? '|' : '.';
+        buf[ 0x4 ] = '\0';
+    } 
+
+    char   buf[ 5 ];
+
+    RGH_inline operator const char* ( void ) const { return buf; }
+};
+
 struct ipv4_addr_str_t {
     inline static constexpr int   BUF_SIZE   = 0x4*3 + 0x3 + 0x1;
 

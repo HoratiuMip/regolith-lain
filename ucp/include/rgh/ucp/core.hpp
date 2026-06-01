@@ -19,6 +19,12 @@
     #error "[RGH-UCP] - LOW should be defined as 0."
 #endif
 
+namespace rgh {
+
+constexpr const char* const   Tag   = "[RGH]";
+
+}
+
 #ifdef RGH_TARGET_OS_FREERTOS
 namespace rgh::freertos_literals {
 

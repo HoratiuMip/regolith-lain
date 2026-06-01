@@ -25,17 +25,16 @@ _RGH_PROTECTED:
 
 _RGH_PROTECTED:
     virtual status_t _daemon_start( void* ctx_ ) = 0;
-
     virtual status_t _daemon_stop( void* ctx_ ) = 0;
+
+public:
+    virtual std::string_view daemon_name( void ) const = 0;
+    virtual std::string daemon_report( void* arg_ = nullptr ) const = 0;
 
 public:
     RGH_inline State_ daemon_state( std::memory_order mo_ = std::memory_order_relaxed ) const {
         return _daemon_state.load( mo_ );
     }
-
-public:
-    virtual std::string_view daemon_name( void ) const = 0;
-    virtual std::string daemon_report( void ) const = 0;
 
 public:
     status_t daemon_set_deps( decltype( _daemon_deps ) deps_ ) {
