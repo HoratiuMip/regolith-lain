@@ -165,6 +165,18 @@ public:
         return RGH_OK;
     }
 
+    std::optional< std::tuple< temperature_t, pressure_t > > load_data( void ) {
+        temperature_t temp = INVALID_TEMPERATURE; pressure_t press = INVALID_PRESSURE;
+        RGH_ASSERT_STATUS_OR( this->load_data( &temp, &press ) ) return {};
+        return {{ temp, press }};
+    }
+
+    std::optional< std::tuple< float, float > > load_dataf( void ) {
+        float temp, press;
+        RGH_ASSERT_STATUS_OR( this->load_data( &temp, &press ) ) return {};
+        return {{ temp, press }};
+    }
+
 public:
     RGH_inline status_t store_ctrl_meas( uint8_t val_ ) { return _i2c->write_reg( 0xF4, val_ ); }
     RGH_inline status_t store_config( uint8_t val_ ) { return _i2c->write_reg( 0xF5, val_ ); }

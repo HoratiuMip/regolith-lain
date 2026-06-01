@@ -33,8 +33,8 @@ _RGH_PROTECTED:
         auto* self = ( Daemon_cluster_FreeRTOS* )arg_;
 
     for(; not self->_main_should_stop() ;) {
-        vTaskDelay( pdMS_TO_TICKS( self->_config.iterate_interval_ms ) );
         RGH_ASSERT_OR( RGH_OK == self->iterate_register() ) break;
+        vTaskDelay( pdMS_TO_TICKS( self->_config.iterate_interval_ms ) );
     }
         vTaskDelete( NULL );
     }

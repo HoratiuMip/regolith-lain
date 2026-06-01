@@ -11,13 +11,17 @@
 namespace rgh {
 
 class Daemon {
+_RGH_PROTECTED:
+    friend class Daemon_cluster;
+
 public:
     enum State_ {
         State_STOPPED, State_STARTED, State_STOPPING, State_STARTING
     };
 
 _RGH_PROTECTED:
-    std::atomic< State_ >   _daemon_state   = { State_STOPPED };
+    std::atomic< State_ >           _daemon_state   = { State_STOPPED };
+    std::vector< HVec< Daemon > >   _deps           = {};
 
 _RGH_PROTECTED:
     virtual status_t _daemon_start( void* ctx_ ) = 0;
@@ -26,6 +30,14 @@ _RGH_PROTECTED:
 
 public:
     virtual std::string_view daemon_name( void ) const = 0;
+
+    bool daemon_dep_of( const Daemon* dmn_ ) const {
+        for( const auto& dep : _deps ) {
+            if( dep->daemon_name() == dmn_->daemon_name() ) return true;
+            if( dep->daemon_dep_of( dmn_ ) ) return true;
+        }
+        return false;
+    }
 
 public:
     status_t daemon_start( void* ctxu_ = nullptr, void* ctxud_ = nullptr ) {
@@ -102,7 +114,10 @@ public:
 
 _RGH_PROTECTED:
     struct _entry_compare_t {
-        bool operator () ( const entry_t& lhs_, const entry_t& rhs_ ) const { 
+        bool operator () ( const entry_t& lhs_, const entry_t& rhs_ ) const {   
+            if( lhs_.ref->daemon_dep_of( rhs_.ref.get() ) ) return false;
+            if( rhs_.ref->daemon_dep_of( lhs_.ref.get() ) ) return true;
+
             return lhs_.ref->daemon_name() < rhs_.ref->daemon_name();
         }
     };
@@ -116,7 +131,7 @@ _RGH_PROTECTED:
 public:
     void when_critical( const critical_fnc_t& crit_fnc_ ) { _crit_fnc = crit_fnc_; }
 
-    void go_critical( HVec< Daemon > cmpd_ ) {
+    void critical_handler( HVec< Daemon > cmpd_ ) {
         bool exflag = false;
         RGH_ASSERT_OR( _crit_flag.compare_exchange_strong( exflag, true, std::memory_order_seq_cst ) ) return;
         if( _crit_fnc ) this->_crit_fnc( std::move( cmpd_ ) );
@@ -126,9 +141,14 @@ public:
 
 public:
     status_t push( entry_t entry_ ) {
+        entry_.ref->_deps = move( entry_.deps );
+        
         auto reg = _register.control();
+
         auto [ itr, inserted ] = reg->emplace( std::move( entry_ ) );
-        return inserted ? RGH_OK : RGH_ERR_WOULD_OVRWR;
+        ASSERT_OR( inserted ) return RGH_ERR_WOULD_OVRWR;
+
+        return RGH_OK;
     }
 
     status_t pop( std::string_view name_ ) {
@@ -161,7 +181,7 @@ public:
                     ++entry._failed_restart_cnt;
 
                     if( entry.critical_n_restarts != -1 && entry._failed_restart_cnt >= entry.critical_n_restarts ) {
-                        this->go_critical( *entry.ref );
+                        this->critical_handler( *entry.ref );
                         return RGH_ERR_TERMINATED; 
                     }
                 } else {
