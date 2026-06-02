@@ -14,6 +14,13 @@
 
 namespace rgh::ino {
 
+struct wifi_daemon_start_args_t {
+    const char*   ssid      = nullptr;
+    const char*   pwrd      = nullptr;
+    uint16_t      vrf_ms    = 1'000;
+    uint8_t       vrf_cnt   = 3;
+};
+
 class WiFi_daemon : public Daemon {
 public:
     virtual std::string_view daemon_name( void ) const override { return "WiFi"; }
@@ -38,20 +45,19 @@ public:
 
 public:
     struct Dridge {
-        virtual const char* get_ssid( void )            const = 0;
-        virtual const char* get_pwrd( void )            const = 0; 
-        virtual uint16_t    get_start_verify_ms( void ) const = 0;
-        virtual uint8_t     get_start_attempts( void )  const = 0; 
+        virtual wifi_daemon_start_args_t get_start_args( void ) const = 0;
     };
 
 _RGH_PROTECTED:
     virtual status_t _daemon_start( void* arg_ ) override {
         ESP_LOGI( Tag, "WiFi: starting..." );
 
-        auto DRG = ( const Dridge* )arg_;
+        RGH_ASSERT_OR( arg_ ) { ESP_LOGE( Tag, "WiFi: bad dridge." ); return RGH_ERR_BADARG; }
 
-        auto ssid = DRG->get_ssid();
-        auto pwrd = DRG->get_pwrd();
+        auto [
+            ssid, pwrd,
+            vrf_ms, vrf_cnt
+        ] = (( const Dridge* )arg_)->get_start_args();
 
         RGH_ASSERT_OR( ssid and pwrd ) { ESP_LOGE( Tag, "WiFi: bad creds." ); return RGH_ERR_NOT_FOUND; }
 
@@ -61,8 +67,8 @@ _RGH_PROTECTED:
 
         uint16_t attempt = 0;
         do {
-            vTaskDelay( pdMS_TO_TICKS( DRG->get_start_verify_ms() ) );
-            RGH_ASSERT_OR( ++attempt < DRG->get_start_attempts() ) {
+            vTaskDelay( pdMS_TO_TICKS( vrf_ms ) );
+            RGH_ASSERT_OR( ++attempt < vrf_cnt ) {
                 ESP_LOGE( Tag, "WiFi: could not connect: %s", ssid );
                 return RGH_ERR_PLATFORMCALL;
             }
@@ -82,5 +88,10 @@ _RGH_PROTECTED:
 #ifndef RGH_INO_WIFI_DAEMON_NO_DECL
     inline WiFi_daemon WiFi_Daemon;
 #endif
+
+#define RGH_INO_WIFI_DAEMON_QUICK_DRIDGE( decl_name_, get_start_args_ )                                         \
+    struct _rgh_ino_wifi_daemon_dridge_##decl_name_ : WiFi_daemon::Dridge {                                    \
+        virtual wifi_daemon_start_args_t get_start_args( void ) const override { return (get_start_args_)(); } \
+    } decl_name_;
 
 }

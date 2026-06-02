@@ -66,7 +66,7 @@ public:
         }
       
         RGH_ASSERT_STATUS_OR( this->_daemon_start( ctx_ ) ) {
-            _daemon_state.store( State_STOPPING, std::memory_order_acquire );
+            _daemon_state.store( State_STOPPING, std::memory_order_seq_cst );
             this->_daemon_stop( ctx_ );
             _daemon_state.store( State_STOPPED, std::memory_order_release );
             return status_;
