@@ -7,8 +7,7 @@
  */
 
 #include <rgh/brp/IO_port.hpp>
-#include <rgh/gep/daemon.hpp>
-#include <rgh/ucp/core.hpp>
+#include <rgh/ucp/daemon.hpp>
 
 #include <WiFiClientSecure.h>
 #ifdef RGH_INO_THINGSBOARD_DAEMON_MQTT_MAX_PACKET_SIZE_
@@ -82,7 +81,7 @@ _RGH_PROTECTED:
     WiFiClientSecure                                                          _wifi_client     = {};
 	Arduino_MQTT_Client                                                       _mqtt_client     = { _wifi_client };
 
-    std::atomic< TaskHandle_t >                                               _tsk_main        = nullptr;
+    freertos::Dynamic_task                                                    _tsk_main        = {};
 
     Server_Side_RPC< CFG_::RPC_ARRAY_SIZE, CFG_::MAX_JSON_FIELDS_PER_SEND >   _rpc             = {};
     Attribute_Request< 1, CFG_::SATTR_ARRAY_SIZE >                            _sattr_request   = {};
@@ -150,43 +149,33 @@ _RGH_PROTECTED:
         _loop_cb     = std::move( loop_cb );
         _loop_int_ms = loop_int_ms;
 
-        TaskHandle_t tsk_main = nullptr;
-        RGH_ASSERT_OR( pdPASS == xTaskCreate(
-            &_main, "RGHtbdmnm",
-            8192, this, loop_prio, &tsk_main
+        RGH_ASSERT_STATUS_OR( _tsk_main.launch(
+            "rgh-tbd", 8192, loop_prio, [ this ] ( const freertos::Dynamic_task* task_ ) -> void {
+                for(; not task_->should_return() and this->daemon_is_positive(); ) {
+                    vTaskDelay( pdMS_TO_TICKS( _loop_int_ms ) );
+
+                    RGH_ASSERT_AND( this->connected() ) {
+                        if( _loop_cb ) this->_loop_cb();
+                        _dev.loop();
+                    }
+                }
+            }
         ) ) {
             ESP_LOGE( Tag, "thingsboard: bad main task create." );
             return RGH_ERR_SYSCALL;
         }
-
-        _tsk_main.store( tsk_main, std::memory_order_release );
+       
         ESP_LOGI( Tag, "thingsboard: started." );
         return OK;
     }
 
     virtual status_t _daemon_stop( [[maybe_unused]]void* ) override {
-        const auto tsk_main = _tsk_main.load( std::memory_order_seq_cst );
-        if( tsk_main ) _tsk_main.wait( tsk_main );
+        _tsk_main.wait_exit();
 
         _dev.disconnect();
         _dev.Cleanup_Subscriptions();
+
         return RGH_OK;
-    }
-
-_RGH_PROTECTED:
-    static void _main( void* arg_ ) {
-        auto*  self = ( Thingsboard_daemon* )arg_;
-
-    for(; self->daemon_is_positive();) {
-        vTaskDelay( pdMS_TO_TICKS( self->_loop_int_ms ) );
-
-        RGH_ASSERT_AND( self->connected() ) {
-            if( self->_loop_cb ) self->_loop_cb();
-            self->_dev.loop();
-        }
-    }
-        self->_tsk_main.store( nullptr, std::memory_order_release );
-        vTaskDelete( nullptr );
     }
 
 };

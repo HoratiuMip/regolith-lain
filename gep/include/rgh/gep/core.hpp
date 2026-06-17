@@ -20,6 +20,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <set>
 #include <shared_mutex>
@@ -47,6 +48,7 @@ struct HVec : public std::shared_ptr< _T_ > {
     RGH_inline static HVec< _T_ > make( Args_&&... args_ ) { return std::make_shared< _T_ >( std::forward< Args_ >( args_ )... ); }
 
     RGH_inline bool operator == ( const _T_* ptr_ ) const { return this->get() == ptr_; }
+    RGH_inline bool operator != ( std::nullptr_t ) const { return this->get() != nullptr; }
 
     RGH_inline operator _T_& ( void ) { return **this; }
     RGH_inline operator const _T_& ( void ) const { return **this; }
@@ -54,5 +56,9 @@ struct HVec : public std::shared_ptr< _T_ > {
 
 template< typename _T_ >
 HVec< _T_ > make_hvec( _T_&& t_ ) { return HVec< _T_ >::make( std::move( t_ ) ); }
+
+
+template< typename _T_ > _T_* rval_addr( _T_&& rval_ ) noexcept { return &rval_; }
+#define RGH_RVAL_ADDR( rval_ ) (rgh::rval_addr( (rval_) ) )
 
 };

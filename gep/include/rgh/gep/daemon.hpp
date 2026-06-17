@@ -19,6 +19,11 @@ public:
         State_STOPPED, State_STARTED, State_STOPPING, State_STARTING
     };
 
+    enum StateCtl_ {
+        StateCtl_NONE,
+        StateCtl_KEEP_ALIVE
+    };
+
 _RGH_PROTECTED:
     std::atomic< State_ >           _daemon_state   = { State_STOPPED };
     std::vector< HVec< Daemon > >   _daemon_deps    = {};
@@ -109,23 +114,22 @@ public:
 
 class Daemon_cluster {
 public:
-    enum StateCtl_ {
-        StateCtl_None,
-        StateCtl_KeepAlive
-    };
+    using StateCtl_ = Daemon::StateCtl_;
+    using enum Daemon::StateCtl_;
 
+public:
     typedef   std::function< void( HVec< Daemon > ) >   crit_fnc_t;
 
     struct rst_if_args_t {
         int   attempt   = 0;
     };
 
-    typedef   std::function< status_t( const rst_if_args_t& ) >   rst_if_fnc_t;
+    typedef   std::function< bool( const rst_if_args_t& ) >   rst_if_fnc_t;
 
     struct dock_t {
         HVec< Daemon >                  ref           = nullptr;
 
-        uint8_t                         state_ctl     = StateCtl_None;
+        StateCtl_                       state_ctl     = StateCtl_NONE;
 
         rst_if_fnc_t                    rst_if        = nullptr;
         int                             crit_n_rsts   = -1;
@@ -193,9 +197,9 @@ public:
             RGH_ASSERT_OR( up_deps == dock.ref->daemon_dep_count() ) continue;
             
             const bool needs_restart = 
-                ( ( dock.state_ctl & StateCtl_KeepAlive ) && not dock.ref->daemon_is_positive() )
+                ( ( dock.state_ctl & StateCtl_KEEP_ALIVE ) && not dock.ref->daemon_is_positive() )
                 ||
-                ( RGH_OK != dock.rst_if( {
+                ( dock.rst_if && dock.rst_if( {
                     .attempt = dock._bad_rst_cnt
                 } ) );
 
@@ -213,6 +217,17 @@ public:
             }
         }
         return RGH_OK;
+    }
+
+public:
+    std::string report( void* ctx_ ) {
+        auto reg = _register.watch();
+
+        std::string out = std::format( "/// Daemon cluster report BEGIN - {} daemons:\n", reg->size() );
+        for( const auto& dmn : *reg ) out += dmn.ref->daemon_report( ctx_ );
+        out += "/// Daemon cluster report END\n";
+
+        return out;
     }
 
 };

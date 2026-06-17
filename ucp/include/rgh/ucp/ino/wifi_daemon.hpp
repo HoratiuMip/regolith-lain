@@ -9,8 +9,7 @@
 #include <WiFi.h>
 
 #include <rgh/brp/IO_string_utils.hpp>
-#include <rgh/ucp/core.hpp>
-#include <rgh/gep/daemon.hpp>
+#include <rgh/ucp/daemon.hpp>
 
 namespace rgh::ino {
 

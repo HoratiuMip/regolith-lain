@@ -6,6 +6,7 @@
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 #include <rgh/gep/daemon.hpp>
+#include <rgh/ucp/core.hpp>
 
 #ifdef RGH_TARGET_OS_FREERTOS
 namespace rgh {
