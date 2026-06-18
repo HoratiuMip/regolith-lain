@@ -11,10 +11,7 @@
 
 namespace rgh::esp32::snsd { using namespace rgh::esp32::io;
 
-class BMP280 : public ::snsd::BMP280 {
-_RGH_PROTECTED:
-    using ::snsd::BMP280::bind_i2c;
-
+class BMP280 : public rgh::snsd::BMP280 {
 _RGH_PROTECTED:
     I2C_m2s   _i2c   = {};   
 

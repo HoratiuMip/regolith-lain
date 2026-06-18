@@ -37,10 +37,14 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 #define RGH_ASSERT_AND(c)           if((c))
 #define RGH_ASSERT_STATUS_OR(c)     if(rgh::status_t status_=(c);RGH_OK!=status_)
 #define RGH_ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR(c) {return status_;}
+#define RGH_ASSERT_STATUS_AND(c)     if(rgh::status_t status_=(c);RGH_OK==status_)
 
 #ifndef RGH_NO_EZ_ASSERTS
     #define ASSERT_OR(c) RGH_ASSERT_OR(c)
     #define ASSERT_AND(c) RGH_ASSERT_AND(c)
+    #define ASSERT_STATUS_OR(c) RGH_ASSERT_STATUS_OR(c)
+    #define ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR_RET(c)
+    #define ASSERT_STATUS_AND(c) RGH_ASSERT_STATUS_AND(c)
 #endif
 
 #define RGH_STRUCT_HAS_OVR( obj, fnc ) ((void*)((obj).*(&fnc))!=(void*)(&fnc))
@@ -50,13 +54,13 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
     #define BV(b) (0x1ull<<b)
 #endif
 #ifndef SBV
-    #define SBV(x,b) (x|=b)
+    #define SBV(x,b) (x|=BV(b))
 #endif
 #ifndef RBV
-    #define RBV(x,b) (x&=~b)
+    #define RBV(x,b) (x&=~BV(b))
 #endif
 #ifndef FBV
-    #define FBV(x,f,b) (f?_SBV(x,b):_RBV(x,b))
+    #define FBV(x,f,b) (f?SBV(x,b):RBV(x,b))
 #endif
 #ifndef SET
     #define SET 0x1

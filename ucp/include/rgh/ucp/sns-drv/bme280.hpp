@@ -6,8 +6,7 @@
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 
-#include <rgh/ucp/IO_i2c_ifs.hpp>
-#include <rgh/ucp/sensor_drivers/bmp280.hpp>
+#include "bmp280.hpp"
 
 namespace rgh::snsd { using namespace rgh::io;
 

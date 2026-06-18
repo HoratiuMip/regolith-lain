@@ -177,6 +177,16 @@ public:
         return {{ temp, press }};
     }
 
+    std::optional< std::tuple< float, float > > oneshot_1xf( void ) {
+        RGH_ASSERT_STATUS_OR( this->store_ctrl_meas( 
+            CtrlMeas_TemperatureSampling_1x | 
+            CtrlMeas_PressureSampling_1x    | 
+            CtrlMeas_Power_OneShot 
+        ) ) return {};
+
+        return this->load_dataf();
+    }
+
 public:
     RGH_inline status_t store_ctrl_meas( uint8_t val_ ) { return _i2c->write_reg( 0xF4, val_ ); }
     RGH_inline status_t store_config( uint8_t val_ ) { return _i2c->write_reg( 0xF5, val_ ); }

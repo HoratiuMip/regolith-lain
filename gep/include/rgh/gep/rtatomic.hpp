@@ -23,19 +23,25 @@ _RGH_PROTECTED:
 
 template< typename _T_ > class rt_atomic : public std::atomic< _T_ > {
 public:
-    typedef   std::function< bool( _T_, _T_ ) >   rt_atomic_mod_t;
+    typedef   _T_                                        holding_t;
+    typedef   std::optional< std::tuple< _T_, bool > >   hook_pull_t;
+    typedef   std::function< bool( _T_, _T_ ) >          modch_fnc_t;
 
 public:
     using std::atomic< _T_ >::atomic;
     rt_atomic( void ) {}
-    rt_atomic( rt_atomic_mod_t mod_ ) : _mod{ mod_ } {}
+    rt_atomic( modch_fnc_t mod_ ) : _mod{ mod_ } {}
     
 _RGH_PROTECTED:
     std::atomic< rt_atomic_ver_t >   _ver   = { 0x0 };
-    rt_atomic_mod_t                  _mod   = &_cmp_crt_hk_prev;
+    modch_fnc_t                      _mod   = &modch_cmp;
 
-_RGH_PROTECTED:
-    static RGH_inline bool _cmp_crt_hk_prev( _T_ crt_, _T_ hk_prev_ ) { return crt_ != hk_prev_; } 
+public:
+    static RGH_inline rt_atomic_hook< _T_ > get_hook( void ) { return {}; }
+
+public:
+    static RGH_inline bool modch_cmp( _T_ next_, _T_ prev_ ) { return next_ != prev_; } 
+    template< float TH_ > static RGH_inline bool modch_absdiff( _T_ next_, _T_ prev_ ) { return abs( next_ - prev_ ) >= TH_; } 
 
 public:
     RGH_inline void push( const _T_& next_ ) {
@@ -43,17 +49,18 @@ public:
         _ver.fetch_add( 1, std::memory_order_seq_cst );
     }
 
-    std::optional< std::tuple< _T_, bool > > pull( rt_atomic_hook< _T_ >& hk_ ) {
+    hook_pull_t pull( rt_atomic_hook< _T_ >& hk_, const bool fmod_ = false ) {
         const auto crt_ver = _ver.load( std::memory_order_acquire );
         if( crt_ver == hk_._ver ) return {};
         hk_._ver = crt_ver;
 
         const auto crt_val = this->load( std::memory_order_seq_cst );    
-        const auto crt_mod = this->_mod( crt_val, hk_._val );
+        if( fmod_ ) return std::tuple{ hk_._prev = crt_val, true };
 
+        const auto crt_mod = this->_mod( crt_val, hk_._prev );
         if( crt_mod ) hk_._prev = crt_val;
 
-        return { std::in_place, crt_val, crt_mod };
+        return std::tuple{ crt_val, crt_mod };
     }
 
 };

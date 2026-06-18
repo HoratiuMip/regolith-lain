@@ -64,13 +64,25 @@ public:
         return std::format( 
             "=-. Thingsboard .-=\n"
             "\t- connected: {}\n"
+            "\t- running: {}\n"
+            "\t- loop interval: {}ms\n"
             , 
-            this->connected()
+            this->connected(),
+            _tsk_main.running(),
+            _loop_int_ms
         );
     }
 
 public:
     RGH_inline bool connected( void ) const { return const_cast< decltype(_dev)& >( _dev ).connected(); }
+
+    RGH_inline status_t send_attr( const char* key_, const auto& val_ ) {
+		return _dev.sendAttributeData( key_, val_ ) ? RGH_OK : RGH_ERR_EXCOMCALL;
+	} 
+
+	RGH_inline status_t send_tlmtr( const char* key_, const auto& val_ ) {
+		return _dev.sendTelemetryData( key_, val_ ) ? RGH_OK : RGH_ERR_EXCOMCALL;
+	}
 
 public:
     struct Dridge {
@@ -177,6 +189,9 @@ _RGH_PROTECTED:
 
         return RGH_OK;
     }
+
+public:
+
 
 };
 #ifdef RGH_INO_THINGSBOARD_DAEMON_CFG_

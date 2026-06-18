@@ -109,9 +109,12 @@ _RGH_PROTECTED:
     }
 
 public:
+    RGH_inline bool running(
+        void
+    ) const { return _handle != nullptr; }
     RGH_inline operator bool ( 
         void 
-    ) const { return _handle != nullptr; }
+    ) const { return this->running(); }
 
 public:
     RGH_inline bool suspend_requested( 
