@@ -167,8 +167,8 @@ _RGH_PROTECTED:
                     vTaskDelay( pdMS_TO_TICKS( _loop_int_ms ) );
 
                     RGH_ASSERT_AND( this->connected() ) {
-                        if( _loop_cb ) this->_loop_cb();
                         _dev.loop();
+                        if( _loop_cb ) this->_loop_cb();
                     }
                 }
             }

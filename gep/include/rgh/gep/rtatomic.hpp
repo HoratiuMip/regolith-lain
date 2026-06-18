@@ -19,6 +19,7 @@ public:
 _RGH_PROTECTED:
     _T_               _prev   = {};
     rt_atomic_ver_t   _ver    = 0x0;
+    bool              _m4m    = false;
 };
 
 template< typename _T_ > class rt_atomic : public std::atomic< _T_ > {
@@ -49,16 +50,21 @@ public:
         _ver.fetch_add( 1, std::memory_order_seq_cst );
     }
 
-    hook_pull_t pull( rt_atomic_hook< _T_ >& hk_, const bool fmod_ = false ) {
+    hook_pull_t pull( rt_atomic_hook< _T_ >* hk_, const bool fmod_ = false ) {
+        hk_->_m4m |= fmod_;
+
         const auto crt_ver = _ver.load( std::memory_order_acquire );
-        if( crt_ver == hk_._ver ) return {};
-        hk_._ver = crt_ver;
+        if( crt_ver == hk_->_ver ) return std::nullopt;
+        hk_->_ver = crt_ver;
 
-        const auto crt_val = this->load( std::memory_order_seq_cst );    
-        if( fmod_ ) return std::tuple{ hk_._prev = crt_val, true };
+        const auto crt_val = this->load( std::memory_order_seq_cst );
+        if( hk_->_m4m ) {
+            hk_->_m4m = false;
+            return std::tuple{ hk_->_prev = crt_val, true };
+        }
 
-        const auto crt_mod = this->_mod( crt_val, hk_._prev );
-        if( crt_mod ) hk_._prev = crt_val;
+        const auto crt_mod = this->_mod( crt_val, hk_->_prev );
+        if( crt_mod ) hk_->_prev = crt_val;
 
         return std::tuple{ crt_val, crt_mod };
     }
