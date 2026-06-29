@@ -51,16 +51,16 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 
 
 #ifndef BV
-    #define BV(b) (0x1ull<<b)
+    #define BV(b) (decltype(b){0x1}<<(b))
 #endif
 #ifndef SBV
-    #define SBV(x,b) (x|=BV(b))
+    #define SBV(x,b) ((x)|=BV((decltype(x))(b)))
 #endif
 #ifndef RBV
-    #define RBV(x,b) (x&=~BV(b))
+    #define RBV(x,b) ((x)&=~BV((decltype(x))(b)))
 #endif
 #ifndef FBV
-    #define FBV(x,f,b) (f?SBV(x,b):RBV(x,b))
+    #define FBV(x,f,b) (f?SBV((x),(b)):RBV((x),(b)))
 #endif
 #ifndef SET
     #define SET 0x1

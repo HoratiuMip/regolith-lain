@@ -8,10 +8,11 @@
 
 #include <rgh/ucp/esp32-5x/IO_i2c.hpp>
 #include <rgh/ucp/sns-drv/bmp280.hpp>
+#include <rgh/ucp/sns-drv/bme280.hpp>
 
 namespace rgh::esp32::snsd { using namespace rgh::esp32::io;
 
-class BMP280 : public rgh::snsd::BMP280 {
+template< typename _S_ > class _BMX280 : public _S_ {
 _RGH_PROTECTED:
     I2C_m2s   _i2c   = {};   
 
@@ -23,5 +24,8 @@ public:
     }
 
 };
+
+typedef   _BMX280< rgh::snsd::BMP280 >   BMP280;
+typedef   _BMX280< rgh::snsd::BME280 >   BME280;
 
 };

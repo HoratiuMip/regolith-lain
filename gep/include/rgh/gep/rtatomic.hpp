@@ -42,7 +42,7 @@ public:
 
 public:
     static RGH_inline bool modch_cmp( _T_ next_, _T_ prev_ ) { return next_ != prev_; } 
-    template< float TH_ > static RGH_inline bool modch_absdiff( _T_ next_, _T_ prev_ ) { return abs( next_ - prev_ ) >= TH_; } 
+    template< _T_ TH_ > static RGH_inline bool modch_absdiff( _T_ next_, _T_ prev_ ) { return abs( next_ - prev_ ) >= TH_; } 
 
 public:
     RGH_inline void push( const _T_& next_ ) {

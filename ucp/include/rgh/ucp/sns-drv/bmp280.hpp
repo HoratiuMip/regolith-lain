@@ -53,8 +53,8 @@ public:
     typedef   int16_t    temperature_t;
     typedef   uint32_t   pressure_t;
 
-    inline static constexpr temperature_t   INVALID_TEMPERATURE   = 0xFFFF;
-    inline static constexpr pressure_t      INVALID_PRESSURE      = 0xFFFFFFFF;
+    inline static constexpr temperature_t   INVALID_TEMPERATURE   = 0xFF'FF;
+    inline static constexpr pressure_t      INVALID_PRESSURE      = 0xFF'FF'FF'FF;
 
 public:
     BMP280( void ) = default;
@@ -183,6 +183,8 @@ public:
             CtrlMeas_PressureSampling_1x    | 
             CtrlMeas_Power_OneShot 
         ) ) return {};
+ 
+        std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
 
         return this->load_dataf();
     }

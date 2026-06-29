@@ -117,28 +117,14 @@ public:
     ) const { return this->running(); }
 
 public:
-    RGH_inline bool suspend_requested( 
-        void 
-    ) const { return _flags & BV(0); }
-    RGH_inline bool exit_requested( 
-        void 
-    ) const { return _flags & BV(1); }
-    RGH_inline bool should_return( 
-        void
-    ) const { return _flags & ( BV(0) | BV(1) ); }
+    RGH_inline bool suspend_requested( void ) const { return _flags & BV(0); }
+    RGH_inline bool exit_requested( void ) const { return _flags & BV(1); }
+    RGH_inline bool should_return( void ) const { return _flags & ( BV(0) | BV(1) ); }
 
-    RGH_inline void request_suspend( 
-        void 
-    ) const { SBV( _flags, 0 ); }
-    RGH_inline void request_exit( 
-        void 
-    ) const { SBV( _flags, 1 ); }
+    RGH_inline void request_suspend( void ) const { SBV( _flags, 0 ); }
+    RGH_inline void request_exit( void ) const { SBV( _flags, 1 ); }
 
-    RGH_inline void resume( 
-        void
-    ) const {
-        vTaskResume( _handle.load() );
-    }
+    RGH_inline void resume( void ) const { RBV( _flags, 0 ); vTaskResume( _handle.load() ); }
 
 };
 

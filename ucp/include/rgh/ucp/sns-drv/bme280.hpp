@@ -24,7 +24,7 @@ public:
 public:
     typedef   uint32_t   humidity_t;
 
-    inline static constexpr humidity_t   INVALID_HUMIDITY   = 0x1p128f;
+    inline static constexpr humidity_t   INVALID_HUMIDITY   = 0xFF'FF'FF'FF;
 
 public:
     BME280( void ) = default;
@@ -112,6 +112,32 @@ public:
         if( hum_out_ )   *hum_out_   = (float)hum / 1024;
 
         return RGH_OK;
+    }
+
+    std::optional< std::tuple< temperature_t, pressure_t, humidity_t > > load_data( void ) {
+        temperature_t temp = INVALID_TEMPERATURE; pressure_t press = INVALID_PRESSURE; humidity_t hum = INVALID_HUMIDITY;
+        RGH_ASSERT_STATUS_OR( this->load_data( &temp, &press, &hum ) ) return std::nullopt;
+        return {{ temp, press, hum }};
+    }
+
+    std::optional< std::tuple< float, float, float > > load_dataf( void ) {
+        float temp, press, hum;
+        RGH_ASSERT_STATUS_OR( this->load_data( &temp, &press, &hum ) ) return std::nullopt;
+        return {{ temp, press, hum }};
+    }
+
+    std::optional< std::tuple< float, float, float > > oneshot_1xf( void ) {
+        RGH_ASSERT_STATUS_OR( this->store_ctrl_hum (
+            CtrlHum_HumiditySampling_1x
+        ) ) return std::nullopt;
+        
+        RGH_ASSERT_STATUS_OR( this->store_ctrl_meas( 
+            CtrlMeas_TemperatureSampling_1x | 
+            CtrlMeas_PressureSampling_1x    | 
+            CtrlMeas_Power_OneShot 
+        ) ) return std::nullopt;
+
+        return this->load_dataf();
     }
 
 public:

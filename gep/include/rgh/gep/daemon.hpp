@@ -223,9 +223,8 @@ public:
     std::string report( void* ctx_ ) {
         auto reg = _register.watch();
 
-        std::string out = std::format( "/// Daemon cluster report BEGIN - {} daemons:\n", reg->size() );
+        std::string out = std::format( "/// Daemon cluster report - {} daemons:\n", reg->size() );
         for( const auto& dmn : *reg ) out += dmn.ref->daemon_report( ctx_ );
-        out += "/// Daemon cluster report END\n";
 
         return out;
     }

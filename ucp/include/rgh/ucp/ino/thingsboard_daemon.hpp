@@ -1,6 +1,6 @@
 #pragma once
 /**
- * @file: gep/wifi_daemon.hpp
+ * @file: gep/ino/thingsboard_daemon.hpp
  * @brief: 
  * @details
  * @authors: Vatca "Mipsan" Tudor-Horatiu
@@ -43,8 +43,8 @@ typedef void( *thingsboard_daemon_sattr_cb_t )( const JsonObjectConst& );
 typedef std::function< void( void ) > thingsboard_daemon_loop_cb_t;
 
 struct thingsboard_daemon_start_args_t {
-    const char*                     server        = nullptr;
-    const char*                     token         = nullptr;
+    std::string                     server        = {};
+    std::string                     token         = {};
     io::ipv4_port_t                 port          = 0x0;
 
 	std::vector< RPC_Callback >     rpc_list      = {};
@@ -77,11 +77,11 @@ public:
     RGH_inline bool connected( void ) const { return const_cast< decltype(_dev)& >( _dev ).connected(); }
 
     RGH_inline status_t send_attr( const char* key_, const auto& val_ ) {
-		return _dev.sendAttributeData( key_, val_ ) ? RGH_OK : RGH_ERR_EXCOMCALL;
+		const bool success = _dev.sendAttributeData( key_, val_ ); _dev.loop(); return success ? RGH_OK : RGH_ERR_EXCOMCALL;
 	} 
 
 	RGH_inline status_t send_tlmtr( const char* key_, const auto& val_ ) {
-		return _dev.sendTelemetryData( key_, val_ ) ? RGH_OK : RGH_ERR_EXCOMCALL;
+		const bool success = _dev.sendTelemetryData( key_, val_ ); _dev.loop(); return success ? RGH_OK : RGH_ERR_EXCOMCALL;
 	}
 
 public:
@@ -119,16 +119,16 @@ _RGH_PROTECTED:
             loop_cb, loop_prio, loop_int_ms
         ] = (( const Dridge* )arg_)->get_start_args();
 
-        uint8_t cred_bits = ( (bool)server << 2 )    |
+        uint8_t cred_bits = ( !server.empty() << 2 ) |
                             ( ( port != 0x0 ) << 1 ) |
-                            ( (bool)token );
+                            ( !token.empty() );
         RGH_ASSERT_OR( cred_bits == 0b111 ) { 
             ESP_LOGE( Tag, "thingsboard: credentials missing: %d.", cred_bits );
             return RGH_ERR_NOT_FOUND;
         }
         
         _wifi_client.setInsecure();
-        RGH_ASSERT_OR( _dev.connect( server, token, port ) ) {
+        RGH_ASSERT_OR( _dev.connect( server.c_str(), token.c_str(), port ) ) {
             ESP_LOGE( Tag, "thingsboard: bad connection." );
             return RGH_ERR_EXCOMCALL;
         } 
