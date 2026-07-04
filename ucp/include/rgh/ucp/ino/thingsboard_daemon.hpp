@@ -14,10 +14,18 @@
     #define MQTT_MAX_PACKET_SIZE RGH_INO_THINGSBOARD_DAEMON_MQTT_MAX_PACKET_SIZE_
 #endif
 #include <Arduino_MQTT_Client.h>
+
 #include <Server_Side_RPC.h>
 #include <Attribute_Request.h>
 #include <Shared_Attribute_Update.h>
+#include <OTA_Update_Callback.h>
+#include <Arduino_ESP32_Updater.h>
+#include <OTA_Firmware_Update.h>
 #include <ThingsBoard.h>
+
+#if !defined( FIRMWARE_STR ) || !defined( FIRMWARE_VER )
+    #error "Define the string and version of the current firmware."
+#endif
 
 namespace rgh::ino {
 
@@ -30,6 +38,8 @@ concept Thingsboard_daemon_static_cfg = requires {
 
     (uint32_t)T_::SATTR_ARRAY_SIZE;
     (uint32_t)T_::SATTR_REQ_TIMEOUT_MS;
+
+    (bool)T_::FOTA_ENABLE;
 };
 struct thingsboard_daemon_static_default_cfg_t {
     inline static constexpr uint32_t   MAX_JSON_FIELDS_PER_RECV   = Default_Response_Amount;
@@ -37,9 +47,11 @@ struct thingsboard_daemon_static_default_cfg_t {
     inline static constexpr uint32_t   MAX_JSON_FIELDS_PER_SEND   = Default_RPC_Amount;
     inline static constexpr uint32_t   SATTR_ARRAY_SIZE           = Default_Attributes_Amount;
     inline static constexpr uint32_t   SATTR_REQ_TIMEOUT_MS       = 3'000;
+    inline static constexpr bool       FOTA_ENABLE                = true;
 };
 
 typedef void( *thingsboard_daemon_sattr_cb_t )( const JsonObjectConst& );
+typedef std::function< void( void ) > thingsboard_daemon_fota_cb_t;
 typedef std::function< void( void ) > thingsboard_daemon_loop_cb_t;
 
 struct thingsboard_daemon_start_args_t {
@@ -50,6 +62,8 @@ struct thingsboard_daemon_start_args_t {
 	std::vector< RPC_Callback >     rpc_list      = {};
 	std::vector< const char* >      sattr_list    = {};
 	thingsboard_daemon_sattr_cb_t   sattr_cb      = nullptr;
+
+    thingsboard_daemon_fota_cb_t    fota_cb       = nullptr;
 
 	thingsboard_daemon_loop_cb_t    loop_cb       = nullptr;
     UBaseType_t                     loop_prio     = configMAX_PRIORITIES - 1;
@@ -66,10 +80,12 @@ public:
             "\t- connected: {}\n"
             "\t- running: {}\n"
             "\t- loop interval: {}ms\n"
+            "\t- fota: {}\n"
             , 
             this->connected(),
             _tsk_main.running(),
-            _loop_int_ms
+            _loop_int_ms,
+            _fota_state
         );
     }
 
@@ -89,6 +105,10 @@ public:
         virtual thingsboard_daemon_start_args_t get_start_args( void ) const = 0;
     };
 
+    static constexpr uint32_t _cfg_eff_sattr_arr_sz( void ) { 
+        return CFG_::SATTR_ARRAY_SIZE + CFG_::FOTA_ENABLE;
+    }
+
 _RGH_PROTECTED:
     WiFiClientSecure                                                          _wifi_client     = {};
 	Arduino_MQTT_Client                                                       _mqtt_client     = { _wifi_client };
@@ -96,14 +116,20 @@ _RGH_PROTECTED:
     freertos::Dynamic_task                                                    _tsk_main        = {};
 
     Server_Side_RPC< CFG_::RPC_ARRAY_SIZE, CFG_::MAX_JSON_FIELDS_PER_SEND >   _rpc             = {};
-    Attribute_Request< 1, CFG_::SATTR_ARRAY_SIZE >                            _sattr_request   = {};
-    Shared_Attribute_Update< 1, CFG_::SATTR_ARRAY_SIZE >                      _sattr_update    = {};
+    Attribute_Request< 1, _cfg_eff_sattr_arr_sz() >                           _sattr_request   = {};
+    Shared_Attribute_Update< 1, _cfg_eff_sattr_arr_sz() >                     _sattr_update    = {};
 
-    const std::array< IAPI_Implementation*, 3 >                               _APIs            = {
-        &_rpc, &_sattr_request, &_sattr_update
+    OTA_Firmware_Update<>                                                     _fota            = {};
+    Arduino_ESP32_Updater                                                     _fota_upd        = {};
+    thingsboard_daemon_fota_cb_t                                              _fota_cb         = nullptr;
+    int                                                                       _fota_state      = 0x0;
+    std::atomic_bool                                                          _fota_mark       = { true };
+
+    const std::array< IAPI_Implementation*, 4 >                               _APIs            = {
+        &_rpc, &_sattr_request, &_sattr_update, &_fota
     };
 
-    ThingsBoardSized< CFG_::MAX_JSON_FIELDS_PER_RECV >                        _dev             = { _mqtt_client, 1024, 8192, _APIs };
+    ThingsBoardSized< CFG_::MAX_JSON_FIELDS_PER_RECV >                        _dev             = { _mqtt_client, 1024, 1024, 8192, _APIs };
 
     thingsboard_daemon_loop_cb_t                                              _loop_cb         = nullptr;  
     uint32_t                                                                  _loop_int_ms     = 200;    
@@ -116,6 +142,7 @@ _RGH_PROTECTED:
         auto [
             server, token, port,
             rpc_list, sattr_list, sattr_cb,
+            fota_cb,
             loop_cb, loop_prio, loop_int_ms
         ] = (( const Dridge* )arg_)->get_start_args();
 
@@ -144,16 +171,33 @@ _RGH_PROTECTED:
         
         if( not sattr_list.empty() and sattr_cb ) {
             RGH_ASSERT_OR( _sattr_update.Shared_Attributes_Subscribe(
-                Shared_Attribute_Callback< CFG_::SATTR_ARRAY_SIZE >{ sattr_cb, sattr_list.cbegin(), sattr_list.cend() }
+                Shared_Attribute_Callback< _cfg_eff_sattr_arr_sz() >{ sattr_cb, sattr_list.cbegin(), sattr_list.cend() }
             ) ) {
                 ESP_LOGE( Tag, "thingsboard: bad shared subscribe." );
                 return RGH_ERR_EXCOMCALL;
             }
 
             RGH_ASSERT_OR( _sattr_request.Shared_Attributes_Request(  
-                Attribute_Request_Callback< CFG_::SATTR_ARRAY_SIZE >{ sattr_cb, CFG_::SATTR_REQ_TIMEOUT_MS*1000, [](){}, sattr_list }
+                Attribute_Request_Callback< _cfg_eff_sattr_arr_sz() >{ sattr_cb, CFG_::SATTR_REQ_TIMEOUT_MS*1000, [](){}, sattr_list }
             ) ) {
                 ESP_LOGE( Tag, "thingsboard: bad shared request." );
+                return RGH_ERR_EXCOMCALL;
+            }
+        }
+
+        if constexpr( CFG_::FOTA_ENABLE ) {
+            _fota_cb = std::move( fota_cb );
+
+            RGH_ASSERT_OR( _sattr_update.Shared_Attributes_Subscribe(
+                Shared_Attribute_Callback< _cfg_eff_sattr_arr_sz() >{ [ this ] ( const JsonObjectConst& payload_ ) -> void {
+                    const auto fw_ver_obj = payload_[ "shared" ][ FW_VER_KEY ] | payload_[ FW_VER_KEY ];
+                
+                    RGH_ASSERT_OR( fw_ver_obj.is< const char* >() ) return;
+                    if( strcmp( ( const char* )fw_ver_obj, FIRMWARE_VER ) != 0x0 ) _fota_mark.store( true, std::memory_order_relaxed );
+
+                }, std::array< const char*, 1 >{ FW_VER_KEY } }
+            ) ) {
+                ESP_LOGE( Tag, "thingsboard: bad internal shared subscribe." );
                 return RGH_ERR_EXCOMCALL;
             }
         }
@@ -167,6 +211,24 @@ _RGH_PROTECTED:
                     vTaskDelay( pdMS_TO_TICKS( _loop_int_ms ) );
 
                     RGH_ASSERT_AND( this->connected() ) {
+                        if constexpr( CFG_::FOTA_ENABLE ) {
+                            if( _fota_mark.load( std::memory_order_relaxed ) ) {
+                                RGH_ASSERT_OR( _fota.Start_Firmware_Update( OTA_Update_Callback{
+                                    FIRMWARE_STR, FIRMWARE_VER, &_fota_upd, 
+                                    [ this ] ( const bool& fota_status_ ) -> void {
+                                        RGH_ASSERT_AND( fota_status_ and _fota_cb ) _fota_cb();
+                                        else _fota_state = -1;
+                                    },
+                                    [ this ] ( const size_t& chunk_, const size_t& ) -> void {
+                                        _fota_state = ( int )chunk_;
+                                    }
+                                } ) ) {
+                                    ESP_LOGE( Tag, "thingsboard: bad firmware update." );
+                                }
+                                _fota_mark.store( false, std::memory_order_relaxed );
+                            }
+                        }
+
                         _dev.loop();
                         if( _loop_cb ) this->_loop_cb();
                     }

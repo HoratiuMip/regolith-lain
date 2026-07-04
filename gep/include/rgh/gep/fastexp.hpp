@@ -291,6 +291,7 @@ public:
                             switch( sym.op.prehash ) {
                                 case txt_hash( "+" ):   clps = regs[0];             break;
                                 case txt_hash( "-" ):   clps = -regs[0];            break;
+                                case txt_hash( "abs" ): clps = std::abs( regs[0] ); break;
                                 case txt_hash( "sin" ): clps = std::sin( regs[0] ); break;
                                 case txt_hash( "cos" ): clps = std::cos( regs[0] ); break;
                                 case txt_hash( "tan" ): clps = std::tan( regs[0] ); break;

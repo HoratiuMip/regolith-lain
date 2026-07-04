@@ -53,6 +53,7 @@ public:
     }
 
 };
+inline Daemon_cluster_FreeRTOS Daemon_Cluster{};
 
 };
 #endif

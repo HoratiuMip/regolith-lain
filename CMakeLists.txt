@@ -1,6 +1,7 @@
 cmake_minimum_required( VERSION 3.28.0 )
 
 message( STATUS "[RGH] CMake begin..." )
+include( "${CMAKE_CURRENT_LIST_DIR}/tools.cmake" )
 
 project(
     RGH
@@ -62,13 +63,6 @@ else()
     return()
 endif()
 
-
-include( FetchContent )
-
-if( POLICY CMP0169 )
-    cmake_policy( SET CMP0169 OLD )
-endif()
-
 set( RGH_Flag_ExcomActive OFF )
 function( RGH_Fnc_PopExcom excom_name )
     if( NOT DEFINED RGH_EXCOM_POPCOUNT )
@@ -90,29 +84,6 @@ function( RGH_Fnc_PopExcom excom_name )
         set( RGH_Flag_ExcomActive ON PARENT_SCOPE )
     endif()
 endfunction()
-
-macro( RGH_Fnc_JustCloneRepo url tag alias excom_dir )
-    message( STATUS "[RGH] Cloning \"${url}\", tag \"${tag}\" to \"${excom_dir}/${alias}\"." )
-    FetchContent_Declare(
-        ${alias}
-        GIT_REPOSITORY "${url}"
-        SOURCE_DIR     "${excom_dir}/${alias}"
-        GIT_TAG        "${tag}"
-    )
-    FetchContent_Populate( ${alias} )
-endmacro( RGH_Fnc_JustCloneRepo )
-
-macro( RGH_Fnc_CloneRepo url tag alias excom_dir )
-    message( STATUS "[RGH] Cloning \"${url}\", tag \"${tag}\" to \"${excom_dir}/${alias}\"." )
-    FetchContent_Declare(
-        ${alias}
-        GIT_REPOSITORY "${url}"
-        SOURCE_DIR     "${excom_dir}/${alias}"
-        GIT_TAG        "${tag}"
-    )
-    FetchContent_MakeAvailable( ${alias} )
-endmacro( RGH_Fnc_CloneRepo )
-
 
 include( CheckIPOSupported )
 check_ipo_supported( RESULT _rgh_ipo_supported OUTPUT _ )

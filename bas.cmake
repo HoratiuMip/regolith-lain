@@ -1,11 +1,13 @@
 # Copy and configure the following in your cmake script before adding the regolith-lain subdirectory.
 # Due to thinking about her I completely forgot what BAS stands for two minutes after making the file.
+# Update: It stands for "Before Add Subdirectory" ...
 
 # VVV COPY FROM HERE VVV
 
 # ===== regolith-lain BAS begin =====
 # Location of regolith-lain.
-set( RGH_ROOT_DIR "" )
+set( RGH_ROOT_DIR "$ENV{RGH_ROOT_DIR}" )
+include( "${RGH_ROOT_DIR}/tools.cmake" )
 
 # Build target plate.
 # - "uC" - target is a microcontroller device.
@@ -15,6 +17,7 @@ set( RGH_TARGET_PLATE "" )
 # Target operating system.
 # - OSp:
 #   - "Windows"
+#   - "Linux"
 # - uCp:
 #   - <empty>
 #   - "FreeRTOS"
