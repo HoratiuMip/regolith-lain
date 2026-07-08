@@ -2,7 +2,7 @@
 /**
  * @file: ops/cache.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

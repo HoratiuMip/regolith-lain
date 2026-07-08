@@ -1,8 +1,8 @@
 #pragma once
 /**
- * @file: OSp/hyper_net.hpp
+ * @file: osp/hyper_net.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

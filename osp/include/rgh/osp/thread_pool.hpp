@@ -2,7 +2,7 @@
 /**
  * @file: osp/thread_pool.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

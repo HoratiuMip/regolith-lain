@@ -2,7 +2,7 @@
 /**
  * @file: osp/IO_sockets.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

@@ -24,6 +24,10 @@ struct port_R_desc_t {
     bool    req_all      = false;
     bool    req_time     = false;
     bool    log          = false;
+
+    RGH_inline void set_bc( int bc_ ) const noexcept {
+        if( byte_count ) *byte_count = bc_;
+    }
 };
 struct port_W_desc_t {
     char*   src_ptr      = nullptr;
@@ -32,6 +36,10 @@ struct port_W_desc_t {
     bool    req_all      = true;
     bool    req_time     = true;
     bool    log          = false;
+
+    RGH_inline void set_bc( int bc_ ) const noexcept {
+        if( byte_count ) *byte_count = bc_;
+    }
 };
 
 class Port {

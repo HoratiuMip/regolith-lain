@@ -2,7 +2,7 @@
 /**
  * @file: osp/render3.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

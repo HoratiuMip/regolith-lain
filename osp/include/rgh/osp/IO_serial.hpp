@@ -2,7 +2,7 @@
 /**
  * @file: osp/IO_serial.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 
@@ -25,19 +25,19 @@
     inline constexpr uint8_t       SERIAL_STOPBIT_ONE       = ONESTOPBIT;
     inline constexpr uint8_t       SERIAL_STOPBIT_ONE_HALF  = ONE5STOPBITS;
     inline constexpr uint8_t       SERIAL_STOPBIT_TWO       = TWOSTOPBITS;
+
 #elifdef RGH_TARGET_OS_LINUX
     typedef   int   serial_handle_t;
 
     inline const serial_handle_t   SERIAL_INVALID_HANDLE    = -1;
 
-    inline constexpr uint8_t       SERIAL_PARITY_NONE       = 0; 
-    inline constexpr uint8_t       SERIAL_PARITY_ODD        = 0; 
-    inline constexpr uint8_t       SERIAL_PARITY_EVEN       = 0; 
-    inline constexpr uint8_t       SERIAL_PARITY_MARK       = 0; 
-    inline constexpr uint8_t       SERIAL_PARITY_SPACE      = 0; 
+    inline constexpr uint8_t       SERIAL_PARITY_NONE       = 0x0; 
+    inline constexpr uint8_t       SERIAL_PARITY_ODD        = 0x1; 
+    inline constexpr uint8_t       SERIAL_PARITY_EVEN       = 0x2; 
+    inline constexpr uint8_t       SERIAL_PARITY_MARK       = 0x3; 
+    inline constexpr uint8_t       SERIAL_PARITY_SPACE      = 0x4; 
 
     inline constexpr uint8_t       SERIAL_STOPBIT_ONE       = 0;
-    inline constexpr uint8_t       SERIAL_STOPBIT_ONE_HALF  = 0;
     inline constexpr uint8_t       SERIAL_STOPBIT_TWO       = 0;
 #endif 
 
@@ -73,6 +73,9 @@ _RGH_PROTECTED:
     serial_config_t   _config     = {};
 
 public:
+    /**
+     * @brief: Returns the handle type native to the underlying operating system.
+     */
     RGH_inline serial_handle_t native_handle( void ) const { return _port; }
 
     RGH_inline std::string_view device( void ) const { return _device; }
@@ -87,12 +90,18 @@ public:
 
 public:
     int read( const port_R_desc_t& desc_ ) override;
-
+  
     int write( const port_W_desc_t& desc_ ) override;
 
 public:
+    /**
+     * @brief: Returns the number of bytes waiting to be read from the reception buffer.
+     */
     int rx_available( void ) const;
 
+    /**
+     * @brief: Clear the transmission and reception buffers.
+     */
     status_t purge( void ) const;
 
 };

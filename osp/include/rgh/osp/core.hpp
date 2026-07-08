@@ -2,7 +2,7 @@
 /**
  * @file: osp/core.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 
@@ -127,7 +127,7 @@ public:
         _MAKE_LOG_AND_PATERN( LogComponent_SCT, "--SCT" );
     #undef _MAKE_LOG_AND_PATERN
         
-        logger = spdlog::stdout_color_mt( RGH_VERSION_STRING ); 
+        logger = spdlog::stdout_color_mt( "old" RGH_VERSION_STRING ); 
         logger->set_pattern( RGH_SPDLOG_PATTERN );
 
         _Component_loggers[ LogComponent_General ] = logger;
@@ -168,12 +168,17 @@ public:
         logger->set_pattern( RGH_SPDLOG_PATTERN );
     }
 
-_RGH_PROTECTED:
+public:
     HVec< spdlog::logger >   logger   = nullptr;
 
 public:
-    RGH_inline spdlog::logger* operator -> ( void ) { return logger.get(); }
+    RGH_inline spdlog::logger* operator -> ( void ) noexcept { return logger.get(); }
 };
+extern bridge_t BridgE;
+
+#define RGH_BRDG_LOGI( ... ) rgh::BridgE.logger->info( __VA_ARGS__ );
+#define RGH_BRDG_LOGW( ... ) rgh::BridgE.logger->warn( __VA_ARGS__ );
+#define RGH_BRDG_LOGE( ... ) rgh::BridgE.logger->error( __VA_ARGS__ );
 
 
 struct on_scope_exit_c_t {

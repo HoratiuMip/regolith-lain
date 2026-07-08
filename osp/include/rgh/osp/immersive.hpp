@@ -1,4 +1,10 @@
 #pragma once
+/**
+ * @file: osp/immersive.hpp
+ * @brief: 
+ * @details:
+ * @authors: Vatca "Mipsan" Tudor-Horatiu
+ */
 
 #include <rgh/osp/render3.hpp>
 

@@ -2,7 +2,7 @@
 /**
  * @file: osp/tempo.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

@@ -1,8 +1,8 @@
 #pragma once
 /**
- * @file: clkwrk/imm_widgets.hpp
+ * @file: osp/imm_widgets.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

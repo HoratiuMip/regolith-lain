@@ -2,7 +2,7 @@
 /**
  * @file: osp/sys_interface.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 

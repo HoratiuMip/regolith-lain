@@ -177,3 +177,5 @@ if( RGH_Opt_TargetOS_Windows )
 elseif( RGH_Opt_TargetOS_Linux )
     target_compile_definitions( RGH_OSp PUBLIC RGH_TARGET_OS_LINUX )
 endif()
+
+add_library( rgh::libosp ALIAS RGH_OSp )

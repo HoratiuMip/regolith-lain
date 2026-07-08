@@ -104,12 +104,13 @@ typedef   int   status_t;
 #define RGH_ERR_INTERRUPTED  -0x11
 #define RGH_ERR_NO_RESOLVE   -0x12
 #define RGH_ERR_BADALLOC     -0x13
+#define RGH_ERR_DEPLETED     -0x14
 
 inline static const char* const _status_msgs[] = {
     "OK", "GENERAL", "SYSCALL", "WOULD_OVRWR", "OPEN",
     "EXCOMCALL", "LOGIC", "USERCALL", "PLATFORMCALL", "BADARG",
     "FLOW", "NOT_IMPL", "BUSY", "NOT_FOUND", "ENGINECALL",
-    "TERMINATED", "NO_RESOLVE", "BADALLOC"
+    "TERMINATED", "NO_RESOLVE", "BADALLOC", "DEPLETED"
 };
 #define RGH_STATUS_MSG(s) (rgh::_status_msgs[-(s)])
 
@@ -134,6 +135,7 @@ inline static const char* const _status_msgs[] = {
     #define ERR_INTERRUPTED  -0x11
     #define ERR_NO_RESOLVE   -0x12
     #define ERR_BADALLOC     -0x13
+    #define ERR_DEPLETED     -0x14
 #endif
 
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}

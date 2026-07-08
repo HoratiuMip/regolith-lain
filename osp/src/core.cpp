@@ -9,6 +9,7 @@
 
 namespace rgh {
 
+bridge_t BridgE{ RGH_VERSION_STRING };
 
 RGH_IMPL_FNC status_t _INTERNAL::init( int argc_, char* argv_[], const init_args_t& args_ ) {    
     RGH_LOGI( "Hello there from RGH, version {}.{}.{}. Initializing ...", RGH_VERSION_MAJOR, RGH_VERSION_MINOR, RGH_VERSION_PATCH );

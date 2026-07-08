@@ -2,7 +2,7 @@
 /**
  * @file: osp/madonna.hpp
  * @brief: 
- * @details
+ * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 /* === engine includes === */
