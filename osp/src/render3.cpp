@@ -5,10 +5,10 @@
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
 
-#ifdef RGH_DEPCOM_ELIGIBLE_RENDER3
-
 #define STB_IMAGE_IMPLEMENTATION
 #include <rgh/osp/render3.hpp>
+
+#ifdef RGH_DEPCOM_ELIGIBLE_RENDER3
 
 namespace rgh { namespace imm {
 

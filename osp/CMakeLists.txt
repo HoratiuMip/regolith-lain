@@ -176,6 +176,10 @@ if( RGH_Opt_TargetOS_Windows )
     )
 elseif( RGH_Opt_TargetOS_Linux )
     target_compile_definitions( RGH_OSp PUBLIC RGH_TARGET_OS_LINUX )
+
+    target_link_libraries( RGH_OSp 
+        PUBLIC "-ludev"
+    )
 endif()
 
 add_library( rgh::libosp ALIAS RGH_OSp )

@@ -41,10 +41,10 @@ public:
 
 class COM_ports {
 public:
-    COM_ports( HVec< io::COM_Ports > ports_ ) : _ports{ std::move( ports_ ) } {
-        /* @note The registered refresh callback lambda function is invoked under a dispenser control, 
+    COM_ports( HVec< io::COM_ports > ports_ ) : _ports{ std::move( ports_ ) } {
+        /* @note The registered hotplug callback lambda function is invoked under a dispenser control, 
             therefore there is no need to worry about races over the container. */
-        _ports->register_refresh_callback( RGH_TXTUUID_FROM_THIS, [ this ] ( io::COM_Ports::container_t& ports_ ) -> void {
+        _ports->register_hotplug_callback( RGH_TXTUUID_FROM_THIS, [ this ] ( io::COM_ports::container_t& ports_ ) -> void {
             auto itr = std::ranges::find_if( ports_, [ this ] ( const io::COM_port_t& port_ ) -> bool {
                 return port_.id == _sel_id;
             } );
@@ -59,23 +59,23 @@ public:
     }
 
     ~COM_ports( void ) {
-        _ports->unregister_refresh_callback( RGH_TXTUUID_FROM_THIS );
+        _ports->unregister_hotplug_callback( RGH_TXTUUID_FROM_THIS );
     }
 
 _RGH_PROTECTED:
-    HVec< io::COM_Ports >   _ports    = nullptr;
+    HVec< io::COM_ports >   _ports    = nullptr;
     int                     _sel      = -0x1;
     std::string             _sel_id   = "";
 
 public:
-    io::COM_port_t* imm_frame( io::COM_Ports::watch_t& watch_ ) {
+    io::COM_port_t* imm_frame( io::COM_ports::watch_t& watch_ ) {
         auto& ports = *watch_;
 
         for( int idx = 0x0; idx < ports.size(); ++idx ) {
             const bool selected = idx == _sel;
 
             ImGui::Separator();
-            if( ImGui::Selectable( ports[ idx ].friendly.c_str(), selected, selected ? ImGuiSelectableFlags_Highlight : ImGuiSelectableFlags_None ) ) {
+            if( ImGui::Selectable( ports[ idx ].detail.c_str(), selected, selected ? ImGuiSelectableFlags_Highlight : ImGuiSelectableFlags_None ) ) {
                 _sel    = idx;
                 _sel_id = ports[ _sel ].id;
             }

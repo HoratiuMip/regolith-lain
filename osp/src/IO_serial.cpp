@@ -128,7 +128,7 @@ status_t Serial::purge( void ) const {
     return 0x0;
 }
 
-#elif RGH_TARGET_OS_LINUX
+#elifdef RGH_TARGET_OS_LINUX
 static constexpr speed_t _baud4termios( uint32_t baud_ ) noexcept {
     switch( baud_ ) {
         case 9600:   return B9600;
@@ -154,7 +154,7 @@ status_t Serial::open(
 {
     RGH_ASSERT_OR( not this->is_connected() ) {
         RGH_ASSERT_STATUS_OR( this->close() ) {
-            RGH_BRDG_LOGE( "serial: bad close of ({}) when opening ({}).", _device, device_ );
+            RGH_BRDG_LOGE( "serial: bad close of {} when opening {}.", _device, device_ );
             return status_;
         }
     }
@@ -163,7 +163,7 @@ status_t Serial::open(
 
     _port = ::open( device_, O_RDWR | O_NOCTTY | O_NONBLOCK );
     RGH_ASSERT_OR( _port != SERIAL_INVALID_HANDLE ) {
-        RGH_BRDG_LOGE( "serial: bad open on ({}).", device_ );
+        RGH_BRDG_LOGE( "serial: bad open on {}.", device_ );
         return RGH_ERR_SYSCALL;
     }
 
@@ -177,13 +177,13 @@ status_t Serial::open(
     } );
 
     RGH_ASSERT_OR( tcgetattr( _port, &tty ) == 0x0 ) {
-        RGH_BRDG_LOGE( "serial: bad getattr on ({}).", _device );
+        RGH_BRDG_LOGE( "serial: bad getattr on {}.", _device );
         return RGH_ERR_SYSCALL;
     }
 
     const speed_t baud = _baud4termios( _config.baud_rate );
     RGH_ASSERT_OR( cfsetospeed( &tty, baud ) == 0x0 and cfsetispeed( &tty, baud ) == 0x0 ) {
-        RGH_BRDG_LOGE( "serial: bad baud set on ({}).", _device );
+        RGH_BRDG_LOGE( "serial: bad baud set on {}.", _device );
         return RGH_ERR_SYSCALL;
     }
 
@@ -218,18 +218,18 @@ status_t Serial::open(
     tty.c_cc[ VTIME ] = ( cc_t )( _config.rx_fb_timeout / 100 ); if( tty.c_cc[ VTIME ] == 0 ) tty.c_cc[ VTIME ] = 1;
 
     RGH_ASSERT_OR( tcsetattr( _port, TCSANOW, &tty ) == 0x0 ) {
-        RGH_BRDG_LOGE( "serial: bad config of ({}).", _device );
+        RGH_BRDG_LOGE( "serial: bad config of {}.", _device );
         return RGH_ERR_SYSCALL;
     }
 
     if( _config.purge_on_open ) {
         RGH_ASSERT_STATUS_OR( this->purge() ) {
-            RGH_BRDG_LOGW( "serial: bad purge when opening ({}).", _device );
+            RGH_BRDG_LOGW( "serial: bad purge when opening {}.", _device );
         }
     }
 
     RGH_ON_SCOPE_EXIT_DROP;
-    RGH_BRDG_LOGI( "serial: opened ({}).", _device );
+    RGH_BRDG_LOGI( "serial: opened {}.", _device );
     return RGH_OK;
 }
 
@@ -238,16 +238,16 @@ status_t Serial::close( void ) {
 
     if( _config.purge_on_close ) {
         RGH_ASSERT_STATUS_OR( this->purge() ) {
-            RGH_BRDG_LOGW( "serial: bad purge when closing ({}).", _device );
+            RGH_BRDG_LOGW( "serial: bad purge when closing {}.", _device );
         }
     }
 
     RGH_ASSERT_OR( ::close( _port ) == 0x0 ) {
-        RGH_BRDG_LOGE( "serial: bad close on ({}).", _device );
+        RGH_BRDG_LOGE( "serial: bad close on {}.", _device );
         return RGH_ERR_SYSCALL;
     }
 
-    RGH_BRDG_LOGI( "serial: closed ({}).", _device );
+    RGH_BRDG_LOGI( "serial: closed {}.", _device );
     _port = SERIAL_INVALID_HANDLE;
     _device.clear();
     return RGH_OK;
@@ -257,7 +257,7 @@ status_t Serial::read( const port_R_desc_t& desc_ ) {
     ssize_t bc = ::read( _port, desc_.dst_ptr, desc_.dst_n );
 
     RGH_ASSERT_OR( bc >= 0 ) {
-        if( errno == EAGAIN || errno == EWOULDBLOCK ) goto l_ok;
+        if( errno == EAGAIN || errno == EWOULDBLOCK ) { bc = 0; goto l_ok; }
         return RGH_ERR_SYSCALL;
     }
 
@@ -271,8 +271,8 @@ l_ok:
 int Serial::write( const port_W_desc_t& desc_ ) {
     ssize_t bc = ::write( _port, desc_.src_ptr, desc_.src_n );
 
-    RGH_ASSERT_OR( bc >= 0x0 ) {
-        if( errno == EAGAIN || errno == EWOULDBLOCK ) goto l_ok;
+    RGH_ASSERT_OR( bc >= 0 ) {
+        if( errno == EAGAIN || errno == EWOULDBLOCK ) { bc = 0; goto l_ok; }
         return RGH_ERR_SYSCALL;
     }
 

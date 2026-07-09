@@ -176,9 +176,9 @@ public:
 };
 extern bridge_t BridgE;
 
-#define RGH_BRDG_LOGI( ... ) rgh::BridgE.logger->info( __VA_ARGS__ );
-#define RGH_BRDG_LOGW( ... ) rgh::BridgE.logger->warn( __VA_ARGS__ );
-#define RGH_BRDG_LOGE( ... ) rgh::BridgE.logger->error( __VA_ARGS__ );
+#define RGH_BRDG_LOGI( ... ) rgh::BridgE.logger->info( __VA_ARGS__ )
+#define RGH_BRDG_LOGW( ... ) rgh::BridgE.logger->warn( __VA_ARGS__ )
+#define RGH_BRDG_LOGE( ... ) rgh::BridgE.logger->error( __VA_ARGS__ )
 
 
 struct on_scope_exit_c_t {

@@ -144,6 +144,8 @@ inline static const char* const _status_msgs[] = {
 
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}
 
+#define RGH_NA "N/A"
+
 struct MDsc {
     typedef   int   n_t;
 
