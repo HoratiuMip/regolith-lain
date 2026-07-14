@@ -11,6 +11,8 @@
 namespace rgh {
 
 #define RGH_FASTCLI_DEFAULT_STENCIL_CASES case 0x1: return RGH_ERR_BADARG;
+#define RGH_FASTCLI_OPT_SWITCH_BEGIN(st_) char opt; while( opt = (st_).next() ) { switch( opt ) { RGH_FASTCLI_DEFAULT_STENCIL_CASES
+#define RGH_FASTCLI_OPT_SWITCH_END } }
 
 class Fast_cli {
 public:
@@ -94,15 +96,25 @@ public:
         char next( void );
     
     public:
-        RGH_inline auto& arg_text( void ) { return *(const std::string*)_arg; }
-        RGH_inline auto  arg_i32( void )  { return *(int32_t*)_arg; }
-        RGH_inline auto  arg_f32( void )  { return *(float*)_arg; }
-        RGH_inline auto  arg_f64( void )  { return *(double*)_arg; }
+        [[deprecated]]RGH_inline auto& arg_text( void ) { return *(const std::string*)_arg; }
+        [[deprecated]]RGH_inline auto  arg_i32( void )  { return *(int32_t*)_arg; }
+        [[deprecated]]RGH_inline auto  arg_f32( void )  { return *(float*)_arg; }
+        [[deprecated]]RGH_inline auto  arg_f64( void )  { return *(double*)_arg; }
 
-        RGH_inline auto& arg_textv( void ) { return *(std::vector< const std::string* >*)_arg; }
-        RGH_inline auto& arg_i32v( void )  { return *(std::vector< int32_t >*)_arg; }
-        RGH_inline auto& arg_f32v( void )  { return *(std::vector< float >*)_arg; }
-        RGH_inline auto& arg_f64v( void )  { return *(std::vector< double >*)_arg; }
+        [[deprecated]]RGH_inline auto& arg_textv( void ) { return *(std::vector< const std::string* >*)_arg; }
+        [[deprecated]]RGH_inline auto& arg_i32v( void )  { return *(std::vector< int32_t >*)_arg; }
+        [[deprecated]]RGH_inline auto& arg_f32v( void )  { return *(std::vector< float >*)_arg; }
+        [[deprecated]]RGH_inline auto& arg_f64v( void )  { return *(std::vector< double >*)_arg; }
+
+        RGH_inline auto& text( void ) { return *(const std::string*)_arg; }
+        RGH_inline auto  i32( void )  { return *(int32_t*)_arg; }
+        RGH_inline auto  f32( void )  { return *(float*)_arg; }
+        RGH_inline auto  f64( void )  { return *(double*)_arg; }
+
+        RGH_inline auto& textv( void ) { return *(std::vector< const std::string* >*)_arg; }
+        RGH_inline auto& i32v( void )  { return *(std::vector< int32_t >*)_arg; }
+        RGH_inline auto& f32v( void )  { return *(std::vector< float >*)_arg; }
+        RGH_inline auto& f64v( void )  { return *(std::vector< double >*)_arg; }
 
     public:
         RGH_inline void operator += ( const std::string& line_ ) { *_ctx->out += line_; }
@@ -172,22 +184,22 @@ public:
         bool _cvt_opt_arg_multi_compact( Arg_ arg_ ) {
             switch( arg_ ) {
                 case Arg_text: {
-                    arg_textv().emplace_back( _ctx->arg_tok );
+                    textv().emplace_back( _ctx->arg_tok );
                 break; }
                 case Arg_i32: {
                     int32_t cvt = 0x0;
                     RGH_ASSERT_OR( _cvt_opt_arg< int32_t >( &cvt ) ) return false;
-                    arg_i32v().emplace_back( cvt );
+                    i32v().emplace_back( cvt );
                 break; }
                 case Arg_f32: {
                     float cvt = 0x0;
                     RGH_ASSERT_OR( _cvt_opt_arg< float >( &cvt ) ) return false;
-                    arg_f32v().emplace_back( cvt );
+                    f32v().emplace_back( cvt );
                 break; }
                 case Arg_f64: {
                     double cvt = 0x0;
                     RGH_ASSERT_OR( _cvt_opt_arg< double >( &cvt ) ) return false;
-                    arg_f64v().emplace_back( cvt );
+                    f64v().emplace_back( cvt );
                 break; }
             }
             return true;
@@ -265,6 +277,8 @@ _RGH_PROTECTED:
         return _config.qte_chrs.find( c_, 0x0 ) != std::string::npos;
     }
 
+
+
 _RGH_PROTECTED:
     status_t _resolve_esc_chr( _parse_ctx_t* ctx_ ) {
         RGH_ASSERT_OR( ++ctx_->id0 < ctx_->text.length() ) return RGH_ERR_BADARG;
@@ -314,7 +328,7 @@ _RGH_PROTECTED:
                 continue;
             }
 
-            *ctx_->out += std::format( "fast-cli: bad character near {}.\n", ctx_->id0 );
+            *ctx_->out += std::format( "fast-cli: bad char near {}.\n", ctx_->id0 );
             return RGH_ERR_BADARG;
         }
 
@@ -356,7 +370,7 @@ public:
         RGH_ASSERT_STATUS_OR_RET( _split_cmd( &ctx ) );
 
         RGH_ASSERT_OR( not ctx.toks.empty() ) {
-            *out_ += "fast-cli: no tokens."; return RGH_ERR_BADARG;
+            *out_ += "fast-cli: nothing to do."; return RGH_ERR_BADARG;
         }
 
         std::shared_lock lck{ _cmd_map_mtx };

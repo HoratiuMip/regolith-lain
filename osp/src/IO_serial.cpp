@@ -268,7 +268,7 @@ l_ok:
     return RGH_OK;
 }
 
-int Serial::write( const port_W_desc_t& desc_ ) {
+status_t Serial::write( const port_W_desc_t& desc_ ) {
     ssize_t bc = ::write( _port, desc_.src_ptr, desc_.src_n );
 
     RGH_ASSERT_OR( bc >= 0 ) {

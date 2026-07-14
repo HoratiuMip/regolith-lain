@@ -37,12 +37,16 @@ namespace rgh {
 template< typename _T_ >
 struct HVec : public std::shared_ptr< _T_ > {
     using std::shared_ptr< _T_ >::shared_ptr;
-    using std::shared_ptr< _T_ >::operator=;
-
+    
+    HVec( const HVec< _T_ >& other_ ) = default;
+    HVec( HVec< _T_ >&& other_ ) = default;
     HVec( const std::shared_ptr< _T_ >&  ptr_ ) : std::shared_ptr< _T_ >{ ptr_ } {}
     HVec( std::shared_ptr< _T_ >&& ptr_ ) : std::shared_ptr< _T_ >{ std::move( ptr_ ) } {}
     HVec( _T_* ptr_ ) { this->reset( ptr_ ); }
     HVec( _T_& ref_ ) : std::shared_ptr< _T_ >{ &ref_, [] ( [[maybe_unused]]_T_* ) static -> void {} } {}
+    
+    RGH_inline HVec< _T_ >& operator = ( const HVec< _T_ >& other_ ) { (std::shared_ptr< _T_ >&)*this = (std::shared_ptr< _T_ >&)other_; return *this; }
+    RGH_inline HVec< _T_ >& operator = ( HVec< _T_ >&& other_ ) { (std::shared_ptr< _T_ >&)*this = (std::shared_ptr< _T_ >&&)other_; return *this; }
 
     template< typename ...Args_ >
     RGH_inline static HVec< _T_ > make( Args_&&... args_ ) { return std::make_shared< _T_ >( std::forward< Args_ >( args_ )... ); }

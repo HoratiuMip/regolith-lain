@@ -77,6 +77,15 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 #define RGH_IN_OUT
 #define RGH_IN_OUT_OPT
 
+#ifndef RGH_NO_UNSCOPED_ARGTYPE_DEFS
+    #define IN
+    #define OUT
+    #define IN_OPT
+    #define OUT_OPT
+    #define IN_OUT
+    #define IN_OUT_OPT
+#endif
+
 
 #include <stdio.h>
 #include <stdlib.h>

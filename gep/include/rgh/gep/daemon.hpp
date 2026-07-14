@@ -31,6 +31,7 @@ _RGH_PROTECTED:
 _RGH_PROTECTED:
     virtual status_t _daemon_start( void* ctx_ ) = 0;
     virtual status_t _daemon_stop( void* ctx_ ) = 0;
+    virtual void _daemon_wake( void* ctx_ ) { return; }
 
 public:
     virtual std::string_view daemon_name( void ) const = 0;
@@ -39,6 +40,11 @@ public:
 public:
     RGH_inline State_ daemon_state( std::memory_order mo_ = std::memory_order_relaxed ) const {
         return _daemon_state.load( mo_ );
+    }
+
+_RGH_PROTECTED:
+    RGH_inline void _daemon_set_state( const State_ state_, std::memory_order mo_ = std::memory_order_relaxed ) {
+        _daemon_state.store( state_, mo_ ); _daemon_state.notify_all();
     }
 
 public:
@@ -71,12 +77,13 @@ public:
         }
       
         RGH_ASSERT_STATUS_OR( this->_daemon_start( ctx_ ) ) {
-            _daemon_state.store( State_STOPPING, std::memory_order_seq_cst );
+            this->_daemon_set_state( State_STOPPING, std::memory_order_seq_cst );
             this->_daemon_stop( ctx_ );
-            _daemon_state.store( State_STOPPED, std::memory_order_release );
+            this->_daemon_set_state( State_STOPPED, std::memory_order_release );
             return status_;
         }
-        _daemon_state.store( State_STARTED, std::memory_order_release );
+        this->_daemon_set_state( State_STARTED, std::memory_order_release );
+        this->_daemon_wake( ctx_ );
         return RGH_OK;
     }
 
@@ -87,7 +94,7 @@ public:
         }
 
         status_t status = this->_daemon_stop( ctx_ );
-        _daemon_state.store( State_STOPPED, std::memory_order_release );
+        this->_daemon_set_state( State_STOPPED, std::memory_order_release );
         return status;
     }
 
@@ -98,7 +105,7 @@ public:
 
 public:
     RGH_inline bool daemon_is_positive( void ) {
-        State_ state = this->daemon_state();
+        const auto state = this->daemon_state();
         return State_STARTED == state || State_STARTING == state;
     }
 
@@ -107,8 +114,14 @@ public:
     }
 
     RGH_inline bool daemon_is_stable( void ) {
-        State_ state = this->daemon_state();
+        const auto state = this->daemon_state();
         return state != State_STOPPING and state != State_STARTING;
+    }
+
+    RGH_inline bool daemon_wait_until( const State_ desired_ ) {
+        const auto state = this->daemon_state();
+        if( state != desired_ ) _daemon_state.wait( state ); 
+        return this->daemon_state() == desired_;
     }
 };
 
