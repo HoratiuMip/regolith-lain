@@ -1,7 +1,7 @@
 @RGH_GENERATED_FILE_CAUTION_MSG@
 #pragma once
 /**
- * @file: BRp/descriptor.hpp.in
+ * @file: brp/descriptor.hpp.in
  * @brief: 
  * @details
  * @authors: Vatca "Mipsan" Tudor-Horatiu
@@ -150,6 +150,8 @@ inline static const char* const _status_msgs[] = {
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}
 
 #define RGH_NA "N/A"
+
+typedef   uint8_t   byte_t;
 
 struct MDsc {
     typedef   int   n_t;

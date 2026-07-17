@@ -155,6 +155,8 @@ inline static const char* const _status_msgs[] = {
 
 #define RGH_NA "N/A"
 
+typedef   uint8_t   byte_t;
+
 struct MDsc {
     typedef   int   n_t;
 

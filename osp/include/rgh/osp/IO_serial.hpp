@@ -89,9 +89,9 @@ public:
     status_t close( void );
 
 public:
-    int read( const port_R_desc_t& desc_ ) override;
+    status_t read( const port_R_desc_t& desc_ ) override;
   
-    int write( const port_W_desc_t& desc_ ) override;
+    status_t write( const port_W_desc_t& desc_ ) override;
 
 public:
     /**
