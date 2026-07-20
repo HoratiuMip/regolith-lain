@@ -18,24 +18,24 @@ typedef   struct bt_addr_t { uint8_t b[6]; }   bt_addr_t;
 typedef   uint8_t    i2c_addr_t;
 
 struct port_R_desc_t {
-    char*   dst_ptr      = nullptr;
-    int     dst_n        = 0;
-    int*    byte_count   = nullptr;
-    bool    req_all      = false;
-    bool    req_time     = false;
-    bool    log          = false;
+    byte_t*   dst_ptr      = nullptr;
+    int       dst_n        = 0;
+    int*      byte_count   = nullptr;
+    bool      req_all      = false;
+    bool      req_time     = false;
+    bool      log          = false;
 
     RGH_inline void set_bc( int bc_ ) const noexcept {
         if( byte_count ) *byte_count = bc_;
     }
 };
 struct port_W_desc_t {
-    char*   src_ptr      = nullptr;
-    int     src_n        = 0;
-    int*    byte_count   = nullptr;
-    bool    req_all      = true;
-    bool    req_time     = true;
-    bool    log          = false;
+    byte_t*   src_ptr      = nullptr;
+    int       src_n        = 0;
+    int*      byte_count   = nullptr;
+    bool      req_all      = true;
+    bool      req_time     = true;
+    bool      log          = false;
 
     RGH_inline void set_bc( int bc_ ) const noexcept {
         if( byte_count ) *byte_count = bc_;

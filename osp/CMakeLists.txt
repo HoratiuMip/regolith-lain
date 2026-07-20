@@ -90,6 +90,7 @@ if( RGH_Flag_ExcomActive )
     RGH_Fnc_CloneRepo( "https://github.com/ocornut/imgui.git" "v1.91.9-docking" imgui "${_excom_dir}" )
     RGH_Fnc_CloneRepo( "https://github.com/epezent/implot.git" "v0.16" implot "${_excom_dir}" )
     RGH_Fnc_JustCloneRepo( "https://github.com/aiekick/ImGuiFileDialog.git" "v0.6.8" imgui_file_dialog "${_excom_dir}" )
+    RGH_Fnc_JustCloneRepo( "https://github.com/altschuler/imgui-knobs.git" "main" imgui_knobs "${_excom_dir}" )
 
     file( GLOB _imgui_source_files "${_excom_dir}/imgui/*.cpp" )
     add_library( ImGui STATIC 
@@ -115,11 +116,17 @@ if( RGH_Flag_ExcomActive )
     target_include_directories( ImFileDialog PUBLIC "${_excom_dir}/imgui/" )
     target_include_directories( ImFileDialog PUBLIC "${_excom_dir}/imgui_file_dialog/" )
 
+    file( GLOB _imgui_knobs_source_files "${_excom_dir}/imgui_knobs/*.cpp" )
+    add_library( ImKnobs STATIC ${_imgui_knobs_source_files} )
+    target_include_directories( ImKnobs PUBLIC "${_excom_dir}/imgui/" )
+    target_include_directories( ImKnobs PUBLIC "${_excom_dir}/imgui_knobs/" )
+
     add_library( One_ImGui INTERFACE )
     target_link_libraries( One_ImGui INTERFACE
         ImGui
         ImPlot
         ImFileDialog
+        ImKnobs
     )
 
     target_link_libraries( RGH_OSp

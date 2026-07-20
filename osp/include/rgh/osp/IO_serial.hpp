@@ -44,7 +44,7 @@
 namespace rgh::io { 
 
 struct serial_config_t {
-    uint32_t   baud_rate       = 0;
+    uint32_t   baud_rate       = 115200;
     uint32_t   rx_fb_timeout   = 1000;
     uint32_t   rx_ib_timeout   = 10;
     uint32_t   tx_timeout      = 1000;
@@ -103,6 +103,27 @@ public:
      * @brief: Clear the transmission and reception buffers.
      */
     status_t purge( void ) const;
+
+};
+
+class Fasttrack_serial : public Serial {
+public:
+    typedef   std::function< void( const byte_t*, int ) >   bytes_cb_t;
+_RGH_PROTECTED:
+    bytes_cb_t     _bytes_cb   = nullptr;
+    std::jthread   _poll_th    = {};
+
+_RGH_PROTECTED:
+    void _poll_loop( 
+        RGH_IN_OUT   std::stop_token stop_tok_ 
+    ) noexcept;
+
+public:
+    status_t open(
+        RGH_IN   const char*              device_, 
+        RGH_IN   const serial_config_t&   config_,
+        RGH_IN   bytes_cb_t               bytes_cb_
+    ) noexcept;
 
 };
 

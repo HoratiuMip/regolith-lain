@@ -5,7 +5,7 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 */
 #pragma once
 /**
- * @file: BRp/descriptor.hpp.in
+ * @file: brp/descriptor.hpp.in
  * @brief: 
  * @details
  * @authors: Vatca "Mipsan" Tudor-Horatiu
@@ -118,12 +118,15 @@ typedef   int   status_t;
 #define RGH_ERR_NO_RESOLVE   -0x12
 #define RGH_ERR_BADALLOC     -0x13
 #define RGH_ERR_DEPLETED     -0x14
+#define RGH_ERR_PARTIAL      -0x15
+#define RGH_ERR_CORRUPTED    -0x16
 
 inline static const char* const _status_msgs[] = {
     "OK", "GENERAL", "SYSCALL", "WOULD_OVRWR", "OPEN",
     "EXCOMCALL", "LOGIC", "USERCALL", "PLATFORMCALL", "BADARG",
     "FLOW", "NOT_IMPL", "BUSY", "NOT_FOUND", "ENGINECALL",
-    "TERMINATED", "NO_RESOLVE", "BADALLOC", "DEPLETED"
+    "TERMINATED", "NO_RESOLVE", "BADALLOC", "DEPLETED", "PARTIAL",
+    "CORRUPTED"
 };
 #define RGH_STATUS_MSG(s) (rgh::_status_msgs[-(s)])
 
@@ -149,6 +152,8 @@ inline static const char* const _status_msgs[] = {
     #define ERR_NO_RESOLVE   -0x12
     #define ERR_BADALLOC     -0x13
     #define ERR_DEPLETED     -0x14
+    #define ERR_PARTIAL      -0x15
+    #define ERR_CORRUPTED    -0x16
 #endif
 
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}

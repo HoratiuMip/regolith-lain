@@ -7,10 +7,14 @@
 
 #include <rgh/osp/IO_serial.hpp>
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <termios.h>
-#include <sys/ioctl.h>
+#ifdef RGH_TARGET_OS_WINDOWS
+#elifdef RGH_TARGET_OS_LINUX
+    #include <fcntl.h> 
+    #include <poll.h>
+    #include <unistd.h>
+    #include <termios.h>
+    #include <sys/ioctl.h>
+#endif
 
 namespace rgh::io {
 
@@ -129,6 +133,7 @@ status_t Serial::purge( void ) const {
 }
 
 #elifdef RGH_TARGET_OS_LINUX
+
 static constexpr speed_t _baud4termios( uint32_t baud_ ) noexcept {
     switch( baud_ ) {
         case 9600:   return B9600;
@@ -285,12 +290,65 @@ l_ok:
 
 int Serial::rx_available( void ) const {
     int bca = 0;
-    RGH_ASSERT_OR( ioctl( _port, FIONREAD, &bca ) >= 0x0 ) return 0;
+    RGH_ASSERT_OR( ::ioctl( _port, FIONREAD, &bca ) >= 0x0 ) return 0;
     return bca;
 }
 
 status_t Serial::purge( void ) const {
-    RGH_ASSERT_OR( tcflush( _port, TCIOFLUSH ) == 0 ) return RGH_ERR_SYSCALL;
+    RGH_ASSERT_OR( ::tcflush( _port, TCIOFLUSH ) == 0 ) return RGH_ERR_SYSCALL;
+    return RGH_OK;
+}
+
+
+RGH_IMPL_FNC void Fasttrack_serial::_poll_loop( 
+    RGH_IN_OUT   std::stop_token stop_tok_ 
+) noexcept {
+    pollfd pfd = {
+        .fd     = _port,
+        .events = POLLIN
+    };
+
+    while( not stop_tok_.stop_requested() ) {
+        int plr = ::poll( &pfd, 1, 500 );
+
+        RGH_ASSERT_AND( plr > 0 ) {
+            RGH_ASSERT_OR( (pfd.revents & (POLLHUP | POLLERR)) == 0x0 ) {
+                RGH_BRDG_LOGE( "ft_serial: POLLHUP or POLLERR on {}.", _device );
+                break;
+            }
+
+            RGH_ASSERT_OR( pfd.revents & POLLIN ) continue;
+
+            int buffer_sz = std::min( this->rx_available(), 1024 );
+            byte_t buffer[ buffer_sz ];
+            RGH_ASSERT_STATUS_OR( this->read( {
+                .dst_ptr    = buffer,
+                .dst_n      = buffer_sz,
+                .byte_count = &buffer_sz
+            } ) ) continue;
+
+            RGH_ASSERT_AND( buffer_sz > 0 ) this->_bytes_cb( buffer, buffer_sz );
+
+        } else RGH_ASSERT_AND( plr == 0 ) {
+            /* Timeout on the poll. */
+        } else {
+            if( errno == EINTR ) continue;
+            RGH_BRDG_LOGE( "ft_serial: bad poll on {}: {}.", _device, std::strerror( errno ) );
+            break;
+        }
+    }
+    RGH_BRDG_LOGW( "ft_serial: poll loop exited on {}.", _device );
+}
+
+RGH_IMPL_FNC status_t Fasttrack_serial::open( 
+    RGH_IN   const char*              device_, 
+    RGH_IN   const serial_config_t&   config_,
+    RGH_IN   bytes_cb_t               bytes_cb_
+) noexcept {
+    RGH_ASSERT_STATUS_OR_RET( this->Serial::open( device_, config_ ) );
+    _bytes_cb = std::move( bytes_cb_ );
+    _poll_th = std::jthread{ &Fasttrack_serial::_poll_loop, this };
+    RGH_BRDG_LOGI( "ft_serial: poll loop entered on {}.", _device );
     return RGH_OK;
 }
 
