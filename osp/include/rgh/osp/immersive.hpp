@@ -16,12 +16,15 @@
 
 #include <rgh/osp/tempo.hpp>
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include <imgui_internal.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <implot.h>
 #include <ImGuiFileDialog.h>
+#include <imgui-knobs.h>
 
 namespace rgh {
 
@@ -72,9 +75,6 @@ public:
     imm::lens_t              _lens_0       = { glm::vec3{0,0,5}, glm::vec3{0,0,0}, glm::vec3{0,1,0} };
 
 _RGH_PROTECTED:
-    HVec< spdlog::logger >   _logger       = nullptr;
-
-_RGH_PROTECTED:
     std::atomic_bool         _is_running   = false;
 
 public:
@@ -85,10 +85,7 @@ public:
 
 _RGH_PROTECTED:
     struct _assets_t {
-        /**
-         * @brief A perlin noise splasher.
-         * @details Perlin by XorDev: https://x.com/XorDev/status/1894123951401378051.
-         */
+        /* A perlin noise splasher by XorDev: https://x.com/XorDev/status/1894123951401378051. */
         struct idle_splash_t {
             inline static float          vrtx[]   = { 1,1, 1,-1, -1,-1, -1,1 };
             inline static unsigned int   idx[]    = { 0,1,3, 1,2,3 };
@@ -129,6 +126,32 @@ public:
 
 public:
     status_t main( int argc_, char* argv_[], const config_t& config_ );
+
+    void sig_main_exit( void ) { RGH_ASSERT_AND( _cluster ) glfwSetWindowShouldClose( _cluster->handle(), GLFW_TRUE ); }
+
+public:
+    RGH_inline static void movx( float dx_ ) { ImGui::SetCursorPosX( ImGui::GetCursorPosX() + dx_ ); }
+    RGH_inline static void movy( float dy_ ) { ImGui::SetCursorPosY( ImGui::GetCursorPosY() + dy_ ); }
+    RGH_inline static void movxy( float dx_, float dy_ ) { movx( dx_ ); movy( dy_ ); }
+    RGH_inline static void movxy( const ImVec2& dv_ ) { ImGui::SetCursorPos( dv_ ); }
+    RGH_inline static void movxy( const ImVec2& dv_, const ImVec2& ddv_ ) { movxy( dv_ + ddv_ ); }
+
+    RGH_inline static auto xycp( void ) { return ImGui::GetCursorPos(); }
+
+    RGH_inline static void scale_font( float scl_ ) { ImGui::SetWindowFontScale( scl_ ); }
+
+    RGH_inline static void scaled_text( float scl_, const char* fmt_, ... ) {
+        auto prev_scl = ImGui::GetCurrentWindow()->FontWindowScale;
+        scale_font( scl_ );
+            va_list args; va_start( args, fmt_ ); ImGui::TextV( fmt_, args ); va_end( args );
+        scale_font( prev_scl );
+    }
+    RGH_inline static void tabbed_text( const char* fmt_, ... ) {
+        const float x = ImGui::GetCursorPosX();
+        va_list args; va_start( args, fmt_ ); ImGui::TextV( fmt_, args ); va_end( args );
+        ImGui::SetCursorPosX( x );
+    }
+
 };
 
 }

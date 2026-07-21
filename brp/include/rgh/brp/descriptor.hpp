@@ -69,6 +69,8 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
     #define RESET 0x0
 #endif
 
+#define RGH_WORD_TO_2_CHAR_LITTLE(wrd_) (uint8_t)(wrd_&0xFF), (uint8_t)(wrd_>>8)
+
 
 #define RGH_IN
 #define RGH_OUT

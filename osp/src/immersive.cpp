@@ -32,7 +32,7 @@ void Immersive::_init_assets( void ) {
     glBindBuffer     ( GL_ARRAY_BUFFER, GL_NONE );
     glBindVertexArray( GL_NONE );
 
-    // Fragment shader by XorDev: https://x.com/XorDev/status/1894123951401378051.
+    /* Fragment shader by XorDev: https://x.com/XorDev/status/1894123951401378051. */
     const char* shaders[ 5 ] = {
         R"(
             #version 410 core
@@ -99,16 +99,13 @@ status_t Immersive::assets_idle_splash_render( const frame_cb_args_t& args_ ) {
 status_t Immersive::main( int argc_, char* argv_[], const config_t& config_ ) {
     config = config_;
 
-    _logger = spdlog::stdout_color_mt( RGH_VERSION_STRING"/immersive" );
-    _logger->set_pattern( RGH_SPDLOG_PATTERN );
-    _logger->info( "main: starting up..." );
+    RGH_BRDG_LOGI( "imm: starting main loop..." );
 
     glfwInit();
     glewInit();
 
-    static auto* _static_logger_ptr_ = _logger.get(); 
     glfwSetErrorCallback( [] ( int err_, const char* desc_ ) static -> void {
-        _static_logger_ptr_->error( "main: glfw says [{}]: \"{}\".", err_, desc_ );
+       RGH_BRDG_LOGE( "imm: glfw says [{}]: \"{}\".", err_, desc_ );
     } );
 
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
@@ -121,8 +118,8 @@ status_t Immersive::main( int argc_, char* argv_[], const config_t& config_ ) {
     
     GLFWwindow* window = glfwCreateWindow( config.width, config.height, config.title, nullptr, nullptr );
 
-    RGH_ASSERT_OR( window ) { _logger->error( "main: bad window handle." ); return RGH_ERR_EXCOMCALL; }
-    _logger->info( "main: window created." );
+    RGH_ASSERT_OR( window ) { RGH_BRDG_LOGE( "imm: bad window handle." ); return RGH_ERR_EXCOMCALL; }
+    RGH_BRDG_LOGI( "imm: window object created." );
 
     glfwMakeContextCurrent( window );
     
@@ -146,29 +143,29 @@ status_t Immersive::main( int argc_, char* argv_[], const config_t& config_ ) {
     imgui.io  = &ImGui::GetIO();
     imgui.stl = &ImGui::GetStyle();
 
-    _logger->info( "main: imgui started." );
+    RGH_BRDG_LOGI( "imm: imgui component started." );
     
     if     ( SrfBeginAs_Iconify == config.srf_bgn_as ) glfwIconifyWindow( window );
     else if( SrfBeginAs_Hide    == config.srf_bgn_as ) glfwHideWindow( window );
 
     this->_init_assets();
-    _logger->info( "main: initialized assets." );
+    RGH_BRDG_LOGI( "imm: assets initialization complete." );
 
     if( config.init_cb ) {
-        _logger->info( "main: invoke init callback..." );
+        RGH_BRDG_LOGI( "imm: invoke init callback..." );
         RGH_ASSERT_OR( RGH_OK == this->config.init_cb( init_cb_args_t{
             .ctx = config.ctx
         } ) ) {
-            _logger->error( "main: aborted by init callback." );
+            RGH_BRDG_LOGE( "imm: aborted by init callback." );
             return RGH_ERR_USERCALL;
         } else {
-            _logger->info( "main: init callback done." );
+            RGH_BRDG_LOGI( "imm: init callback done." );
         }
     } else {
-        _logger->info( "main: no init callback to invoke." );
+        RGH_BRDG_LOGI( "imm: no init callback to invoke." );
     }
     
-    _logger->info( "main: init done. Diving the loop..." );
+   RGH_BRDG_LOGI( "imm: ready for loop..." );
 
     glViewport( 0, 0, config.width, config.height );
 
@@ -200,14 +197,14 @@ status_t Immersive::main( int argc_, char* argv_[], const config_t& config_ ) {
 l_end:
     _is_running.store( false, std::memory_order_seq_cst );
 
-    _logger->info( "main: shutting down..." );
+    RGH_BRDG_LOGI( "imm: shutting down..." );
 
     if( config.exit_cb ) config.exit_cb( {
         .ctx = config.ctx
     } );
 
     this->_clean_assets();
-    _logger->info( "main: cleaned assets." );
+    RGH_BRDG_LOGI( "imm: assets cleaned." );
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -216,7 +213,10 @@ l_end:
 
     glfwDestroyWindow( window );
 
-    _logger->info( "main: shutdown." );
+    _cluster.reset();
+    glfwTerminate();
+
+    RGH_BRDG_LOGI( "imm: shutdown complete." );
     return RGH_OK;
 }
 
