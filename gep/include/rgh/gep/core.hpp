@@ -65,4 +65,10 @@ HVec< _T_ > make_hvec( _T_&& t_ ) { return HVec< _T_ >::make( std::move( t_ ) );
 template< typename _T_ > _T_* rval_addr( _T_&& rval_ ) noexcept { return &rval_; }
 #define RGH_RVAL_ADDR( rval_ ) (rgh::rval_addr( (rval_) ) )
 
+template< typename _T_ >
+concept C_iterable_char_range = 
+    std::convertible_to< _T_, std::string_view >
+    ||
+    std::ranges::input_range< _T_ > && std::convertible_to<std::ranges::range_value_t< _T_ >, char >;
+
 };

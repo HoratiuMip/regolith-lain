@@ -132,7 +132,7 @@ public:
 public:
     RGH_inline DispenserMode_ mode( void ) const { return _mode; }
 
-    template< typename ..._VARGS_ > RGH_inline _dispenser_acquire< _T_, false > watch( _VARGS_&&... args_ ); 
+    template< typename ..._VARGS_ > RGH_inline _dispenser_acquire< _T_, false > watch( _VARGS_&&... args_ ) const; 
     template< typename ..._VARGS_ > RGH_inline _dispenser_acquire< _T_, true > control( _VARGS_&&... args_ ); 
 
 public:
@@ -168,7 +168,10 @@ public:
 template< typename _T_, bool _IS_CONTROL_ > struct _dispenser_acquire {
 public:
     template< typename ..._VARGS_ >
-    [[gnu::hot]] _dispenser_acquire( Dispenser< _T_ >& disp_, _VARGS_&&... vargs_ ) : _disp{ &disp_ }, _M_{ disp_._mode }  {
+    [[gnu::hot]] _dispenser_acquire( 
+        std::conditional_t< _IS_CONTROL_, Dispenser< _T_ >&, const Dispenser< _T_ >& > disp_, _VARGS_&&... vargs_ 
+    ) : _disp{ const_cast< Dispenser< _T_ >* >( &disp_ ) }, _M_{ disp_._mode }  
+    {
         switch( _disp->_mode ) {
             case DispenserMode_Lock: {
                 if constexpr( _IS_CONTROL_ ) {
@@ -406,7 +409,7 @@ public:
 };
 
 template< typename _T_ > template< typename ..._VARGS_ > 
-_dispenser_acquire< _T_, false > Dispenser< _T_ >::watch( _VARGS_&&... args_ ) { return _dispenser_acquire< _T_, false >{ *this, std::forward< _VARGS_ >( args_ )... }; }
+_dispenser_acquire< _T_, false > Dispenser< _T_ >::watch( _VARGS_&&... args_ ) const { return _dispenser_acquire< _T_, false >{ *this, std::forward< _VARGS_ >( args_ )... }; }
 template< typename _T_ > template< typename ..._VARGS_ > 
 _dispenser_acquire< _T_, true > Dispenser< _T_ >::control( _VARGS_&&... args_ ) { return _dispenser_acquire< _T_, true >{ *this, std::forward< _VARGS_ >( args_ )... }; }
 

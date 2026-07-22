@@ -1,25 +1,24 @@
-#pragma once
-/**
- * @file: osp/text_utils.hpp
- * @brief: 
- * @details
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
+#pragma once /*
+# FILE: osp/text_utils.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See LICENSE file in the project root for full license information.
+*/
 
 #include <rgh/gep/core.hpp>
 
 namespace rgh {
 
-/**
- * @brief Levenshtein distance between two strings each of any length.
- */
+/*
+# Levenshtein distance between two strings each of any length.
+*/
 int lev_dist( std::string_view s_, std::string_view t_ );
 
 
-/**
- * @brief A quick string hasher, usable also for mapping and switching.
- */
-constexpr uint32_t txt_hash( const std::string& str_ ) {
+/*
+# A quick string hasher, usable also for mapping and switching.
+*/
+constexpr uint32_t txt_hash( std::string_view str_ ) {
     uint32_t h = 2166136261U;
     for( char c : str_ ) {
         h ^= (uint32_t)c;
@@ -27,5 +26,9 @@ constexpr uint32_t txt_hash( const std::string& str_ ) {
     }
     return h;
 }
+constexpr uint32_t txt_hash( char c_ ) {
+    return (2166136261U ^ ( uint32_t )c_) * 16777619U;
+}
+static_assert( txt_hash( 'R' ) == txt_hash( "R" ) );
 
 };

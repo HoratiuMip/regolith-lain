@@ -5,7 +5,6 @@
  * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
-
 #include <rgh/osp/render3.hpp>
 
 #ifdef RGH_DEPCOM_ELIGIBLE_RENDER3
@@ -14,6 +13,7 @@
 
 #ifdef RGH_DEPCOM_ELIGIBLE_IMMERSIVE
 
+#include <rgh/gep/dispenser.hpp>
 #include <rgh/osp/tempo.hpp>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -76,6 +76,12 @@ public:
 
 _RGH_PROTECTED:
     std::atomic_bool         _is_running   = false;
+
+_RGH_PROTECTED:
+    Dispenser< std::vector< std::string > >   _dnd_files   = { DispenserMode_Lock };
+public:
+    bool has_dropped_files( void ) const { return not _dnd_files.watch()->empty(); }
+    auto flush_dropped_files( void ) { return std::move( *_dnd_files.control() ); }
 
 public:
     struct imgui_t {
@@ -150,6 +156,33 @@ public:
         const float x = ImGui::GetCursorPosX();
         va_list args; va_start( args, fmt_ ); ImGui::TextV( fmt_, args ); va_end( args );
         ImGui::SetCursorPosX( x );
+    }
+
+    static std::string select_file_button( 
+        RGH_IN_OPT   Immersive*              imm_,
+        RGH_IN       const char*             label_,
+        RGH_IN       const char*             key_id_,
+        RGH_IN       const char*             title_,
+        RGH_IN       const char*             format_,
+        RGH_IN_OPT   ImVec2                  min_sz_   = { 400, 300 },
+        RGH_IN_OPT   const char*             path_     = ".",
+        RGH_IN_OPT   ImGuiFileDialogFlags_   flags_    = ImGuiFileDialogFlags_None
+    ) {
+        if( ImGui::Button( label_ ) ) {
+            ImGuiFileDialog::Instance()->OpenDialog( key_id_, title_, format_, IGFD::FileDialogConfig{
+                .path  = ".",
+                .flags = flags_
+            } );
+        } else if( auto files_ = imm_->flush_dropped_files(); not files_.empty() ) {
+            return files_.front();
+        }
+        if( ImGuiFileDialog::Instance()->Display( key_id_, ImGuiWindowFlags_NoCollapse, min_sz_ ) ) {
+            std::string ret = {};
+            ASSERT_AND( ImGuiFileDialog::Instance()->IsOk() ) ret = ImGuiFileDialog::Instance()->GetFilePathName();
+            ImGuiFileDialog::Instance()->Close();
+            return ret;
+        }
+        return {};
     }
 
 };

@@ -19,7 +19,9 @@ public:
 public:
     Fast_exp( void ) = default;
 
-    Fast_exp( std::string_view exp_ ) {
+    Fast_exp( std::string_view exp_, defr_cb_t defr_ = nullptr ) 
+    : _defr{ std::move( defr_ ) }
+    {
         this->parse( exp_ );
     }
 
@@ -57,7 +59,7 @@ _RGH_PROTECTED:
 
 _RGH_PROTECTED:
     std::deque< _sym_t >                              _rpn       = {};
-    defr_cb_t                                         _defr      = {};
+    defr_cb_t                                         _defr      = nullptr;
     std::unordered_map< unsigned char, _op_meta_t >   _opm_map   = {
         { '^', { 0x0C, 2 } },
         { '/', { 0x0B, 2 } },
@@ -316,6 +318,7 @@ public:
         return RGH_OK;
     }
 
+    RGH_inline _prec_t_ resolve( _prec_t_ def_ = {0} ) { _prec_t_ result = def_; RGH_ASSERT_STATUS_OR( this->resolve( &result ) ); return result; }
 };
 
 }

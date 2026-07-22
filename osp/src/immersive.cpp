@@ -133,6 +133,11 @@ status_t Immersive::main( int argc_, char* argv_[], const config_t& config_ ) {
         glViewport( 0, 0, w_, h_ );
     } );
 
+    glfwSetDropCallback( window, [] ( GLFWwindow* window_, int filc_, const char* filv_[] ) {
+        auto* self = ( Immersive* )glfwGetWindowUserPointer( window_ );
+        self->_dnd_files.control()->assign( filv_, filv_+filc_ );
+    });
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();

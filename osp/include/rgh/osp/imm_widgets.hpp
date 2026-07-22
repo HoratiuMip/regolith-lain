@@ -68,29 +68,40 @@ _RGH_PROTECTED:
     std::string             _sel_id   = "";
 
 public:
-    std::tuple< io::COM_port_t*, bool > imm_frame( io::COM_ports::watch_t& watch_ ) {
+    std::tuple< io::COM_port_t*, bool, bool > imm_frame( io::COM_ports::watch_t& watch_ ) {
+        bool rescan = ImGui::Button( "Scan for COM ports" );
+
         auto& ports = *watch_;
 
         bool sel_now = false;
-        for( int idx = 0x0; idx < ports.size(); ++idx ) {
-            const bool selected = idx == _sel;
+        if( not ports.empty() ) {
+            for( int idx = 0x0; idx < ports.size(); ++idx ) {
+                const bool selected = idx == _sel;
 
-            ImGui::Separator();
-            ImGui::Bullet();
-            if( ImGui::Selectable( ports[ idx ].detail.c_str(), selected, selected ? ImGuiSelectableFlags_Highlight : ImGuiSelectableFlags_None ) ) {
-                _sel    = idx;
-                _sel_id = ports[ _sel ].id;
-                sel_now = true;
+                ImGui::Separator();
+                ImGui::Bullet();
+                if( ImGui::Selectable( ports[ idx ].detail.c_str(), selected, selected ? ImGuiSelectableFlags_Highlight : ImGuiSelectableFlags_None ) ) {
+                    _sel    = idx;
+                    _sel_id = ports[ _sel ].id;
+                    sel_now = true;
+                }
+                ImGui::Separator();
             }
+        } else {
+            ImGui::Separator();
+            ImGui::BulletText( "No COM ports found." );
             ImGui::Separator();
         }
-
-        if( _sel >= 0x0 && _sel < ports.size() ) return { &ports[ _sel ], sel_now }; 
         
+        if( _sel >= 0x0 && _sel < ports.size() ) return { &ports[ _sel ], sel_now, rescan }; 
+
         _sel    = -0x1;
         _sel_id = "";
-        return { nullptr, false };
+        return { nullptr, false, rescan };
     }
+
+public:
+    RGH_inline io::COM_ports* operator -> ( void ) { return _ports.get(); }
 
 };
 
