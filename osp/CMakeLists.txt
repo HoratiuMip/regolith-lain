@@ -91,6 +91,7 @@ if( RGH_Flag_ExcomActive )
     RGH_Fnc_CloneRepo( "https://github.com/epezent/implot.git" "v0.16" implot "${_excom_dir}" )
     RGH_Fnc_JustCloneRepo( "https://github.com/aiekick/ImGuiFileDialog.git" "v0.6.8" imgui_file_dialog "${_excom_dir}" )
     RGH_Fnc_JustCloneRepo( "https://github.com/altschuler/imgui-knobs.git" "main" imgui_knobs "${_excom_dir}" )
+    RGH_Fnc_JustCloneRepo( "https://github.com/thedmd/imgui-node-editor.git" "master" imgui_node_editor "${_excom_dir}" )
 
     file( GLOB _imgui_source_files "${_excom_dir}/imgui/*.cpp" )
     add_library( ImGui STATIC 
@@ -121,20 +122,22 @@ if( RGH_Flag_ExcomActive )
     target_include_directories( ImKnobs PUBLIC "${_excom_dir}/imgui/" )
     target_include_directories( ImKnobs PUBLIC "${_excom_dir}/imgui_knobs/" )
 
+    file( GLOB _imgui_node_editor_source_files "${_excom_dir}/imgui_node_editor/*.cpp" )
+    add_library( ImNodeEditor STATIC ${_imgui_node_editor_source_files} )
+    target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui/" )
+    target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui_node_editor/" )
+
     add_library( One_ImGui INTERFACE )
     target_link_libraries( One_ImGui INTERFACE
         ImGui
         ImPlot
         ImFileDialog
         ImKnobs
+        ImNodeEditor
     )
 
     target_link_libraries( RGH_OSp
         PUBLIC One_ImGui
-    )
-    target_include_directories( RGH_OSp
-        PUBLIC "${_excom_dir}/imgui"
-        PUBLIC "${_excom_dir}/implot"
     )
 endif()
 
