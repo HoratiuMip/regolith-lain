@@ -1,11 +1,20 @@
-#pragma once
-/**
- * @file: gep/dispenser.hpp
- * @brief: 
- * @details
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
-
+#pragma once /*
+# FILE: gep/dispenser.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# DETAILS: Seen as a black box, the dispenser system acts as acquiring a lock before working on an object,
+#            and releasing it after. However, it operates in different modes tuned for different scenarios,
+#            each presenting trade-offs between spatial and temporal usages in order to ultimately be quicker
+#            than a classic lock and prevent blocking other threads when not necessary.
+#
+# MODES:
+#   > LOCK - Watch: lock shared | Control: lock unique.
+#   > TRYLOCK - Wach: try lock shared | Control: lock unique.
+#   > DROP - Watch: load pointer | Control: alloc and store pointer.
+#
+*/
 #include <rgh/gep/core.hpp>
 
 namespace rgh {
@@ -396,12 +405,20 @@ public:
 
 public:
     RGH_inline operator bool ( void ) const {
-        switch( _disp->_mode ) {
-            case DispenserMode_Trylock: 
-                return _M_.trylock.acq;
-            case DispenserMode_Drop: [[fallthrough]];
-            case DispenserMode_DropInterval:
-                return _M_.drop.block != nullptr;
+        if constexpr( _IS_CONTROL_ ) {
+            switch( _disp->_mode ) {
+                case DispenserMode_Drop: [[fallthrough]];
+                case DispenserMode_DropInterval:
+                    return _M_.drop.block != nullptr;
+            }
+        } else {
+            switch( _disp->_mode ) {
+                case DispenserMode_Trylock: 
+                    return _M_.trylock.acq;
+                case DispenserMode_Drop: [[fallthrough]];
+                case DispenserMode_DropInterval:
+                    return _M_.drop.block != nullptr;
+            }
         }
         return true;
     }

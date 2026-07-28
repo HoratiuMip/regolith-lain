@@ -140,7 +140,6 @@ if( RGH_Flag_ExcomActive )
         PUBLIC One_ImGui
     )
 endif()
-
 # LAPACK
 RGH_Fnc_PopExcom( "LAPACK" )
 if( RGH_Flag_ExcomActive )
@@ -157,9 +156,56 @@ if( RGH_Flag_ExcomActive )
     )
    
     target_include_directories( RGH_OSp
-        PUBLIC "${_excom_dir}/lapack/LAPACKE/include"
-        PUBLIC "${lapack_BINARY_DIR}/include"
+        PUBLIC ${_excom_dir}/lapack/LAPACKE/include
+        PUBLIC ${lapack_BINARY_DIR}/include
     )
+endif()
+# OpenCV
+RGH_Fnc_PopExcom( "OpenCV" )
+if( RGH_Flag_ExcomActive )
+    target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_OPENCV )
+
+    find_package( OpenCV QUIET CONFIG
+        PATHS ${_excom_dir}/opencv/install
+        NO_DEFAULT_PATH
+    )
+
+    ExternalProject_Add( opencv
+        PREFIX          ${_excom_dir}/opencv
+        GIT_REPOSITORY  https://github.com/opencv/opencv.git
+        GIT_TAG         4.14.0
+        GIT_SHALLOW     TRUE
+        CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${_excom_dir}/opencv/install
+            -DBUILD_LIST=core,imgproc,videoio,highgui
+            -DBUILD_opencv_apps=OFF
+            -DBUILD_opencv_dnn=OFF
+            -DBUILD_TESTS=OFF
+            -DBUILD_PERF_TESTS=OFF
+            -DBUILD_EXAMPLES=OFF
+            -DBUILD_DOCS=OFF
+            -DBUILD_JAVA=OFF
+            -DBUILD_opencv_python3=OFF
+            -DWITH_FFMPEG=OFF
+            -DWITH_V4L=ON
+            -DWITH_GTK=ON
+            -DWITH_PROTOBUF=OFF
+        BUILD_COMMAND     ${CMAKE_COMMAND} --build <BINARY_DIR> --config Release
+        INSTALL_COMMAND   ${CMAKE_COMMAND} --install <BINARY_DIR>
+        UPDATE_COMMAND    ""
+    )
+    
+    find_package( OpenCV QUIET CONFIG
+        PATHS ${_excom_dir}/opencv/install
+        NO_DEFAULT_PATH
+    )
+    if( OpenCV_FOUND )
+        target_link_libraries( RGH_OSp PUBLIC ${OpenCV_LIBS} )
+        add_dependencies( RGH_OSp opencv )
+    else()
+        message( ERROR "[RGH] OpenCV not found." )
+    endif()
 endif()
 
 if( RGH_Opt_TargetOS_Windows )

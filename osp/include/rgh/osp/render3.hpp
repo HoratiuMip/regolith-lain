@@ -1,13 +1,14 @@
-#pragma once
-/**
- * @file: osp/render3.hpp
- * @brief: 
- * @details:
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
-
+//# !!! DEPRECATED FILE. WILL BE MOVED AND MERGED WITH immersive.hpp. 
+#pragma once /*
+# FILE: osp/render3.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# DETAILS: Graphics handler cluster using OpenGL and Dear ImGui.
+*/
 #if defined( RGH_EXCOM_OPENGL ) && defined( RGH_EXCOM_STB ) && defined( RGH_EXCOM_TINYOBJ )
-    #define RGH_DEPCOM_ELIGIBLE_RENDER3
+    //#define RGH_DEPCOM_ELIGIBLE_RENDER3
 #endif
 
 #ifdef RGH_DEPCOM_ELIGIBLE_RENDER3
@@ -21,27 +22,6 @@
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 #include <tiny_obj_loader.h>
-
-namespace rgh::imm {
-
-class _bridge_t {
-public:
-    _bridge_t( void ) {
-        logger = spdlog::stdout_color_mt( RGH_VERSION_STRING"/imm" ); 
-        logger->set_pattern( RGH_SPDLOG_PATTERN );
-
-        logger->info( "bridge: init OK." );
-    }
-
-_RGH_PROTECTED:
-    HVec< spdlog::logger >   logger   = nullptr;
-
-public:
-    RGH_inline spdlog::logger* operator -> ( void ) { return logger.get(); }
-
-}; inline _bridge_t BridgE;
-
-}
 
 namespace rgh::imm {
 
@@ -126,31 +106,7 @@ struct pipe_t {
     }
 };
 
-struct tex_params_t {
-    GLuint   min_filter    = GL_LINEAR_MIPMAP_LINEAR;
-    GLuint   mag_filter    = GL_LINEAR;
-    GLuint   v_flip        = false;
-    bool     keep_in_RAM   = false;
-};
-struct tex_t {
-    tex_t( void ) = default;
-    tex_t( const std::string& strid_, GLuint glidx_ ) : strid{ strid_ }, glidx{ glidx_ } {}
 
-    tex_t( const tex_t& ) = delete;
-    tex_t( tex_t&& other_ ) : strid{ std::move( other_.strid ) }, glidx{ std::exchange( other_.glidx, GL_NONE ) } {}
-
-    ~tex_t( void ) { 
-        RGH_ASSERT_OR( GL_NONE != glidx ) return;
-        glDeleteTextures( 1, &glidx );
-        glidx = GL_NONE; 
-
-        if( RAM_img.pixels ) free( RAM_img.pixels );
-    }
-
-    std::string   strid     = {};
-    GLuint        glidx     = GL_NONE;
-    GLFWimage     RAM_img   = {};
-};
 
 struct ren_target_t {
     ren_target_t( void ) = default;
@@ -309,43 +265,15 @@ public:
     // std::cout << "GOD I SUMMON U. GIVE MIP TEO FOR A FEW DATES (AT LEAST 100)"; 
     // std::cout << "TY";
     // ----
-    // MIP here after almost one year. Yeah. RIP XX
+    // MIP here after almost one year. Yeah. RIP XX.
     // ----
     // Astept pe pookie sa scrie carte sa citesc odata acel masterpiece... Da se joaca deadlock plm de obsedat.
+    // ---
+    // O picat curentu si nu mai are uptime routeru de 325 zile. :(
 
 public:
-    struct init_args_t {
-        GLFWwindow*   glfwnd;
-    };
-
-public:
-    Cluster( const init_args_t& args_ )
-    :  _glfwnd{ args_.glfwnd } 
-    {
-        glfwMakeContextCurrent( _glfwnd );
-
-        _rend_str = ( const char* )glGetString( GL_RENDERER ); 
-        _gl_str   = ( const char* )glGetString( GL_VERSION );
-
-        glDepthFunc( GL_LESS );
-        glEnable( GL_DEPTH_TEST );
-
-        glFrontFace( GL_CCW );
-
-        glCullFace( GL_BACK );
-        glEnable( GL_CULL_FACE ); 
-
-        glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-        glEnable( GL_BLEND );
-
-        glewExperimental = GL_TRUE; 
-        glewInit();
-
-        int wnd_w, wnd_h;
-        glfwGetFramebufferSize( _glfwnd, &wnd_w, &wnd_h );
-        glViewport( 0, 0, wnd_w, wnd_h );
-
-        BridgE->info( "cluster: docked on {} @ {}.", _rend_str ? _rend_str : "NULL", _gl_str ? _gl_str : "NULL" );
+    Cluster( void ) {
+        
     }
 
     Cluster( const Cluster& ) = delete;
@@ -615,7 +543,8 @@ _RGH_PROTECTED:
 
                 glBindTexture( GL_TEXTURE_2D, GL_NONE );
 
-                tex = _bucket.commit( strid_, tex_t{ strid_, tex_glidx }, bkt_hdl_ );
+                tex_t tex_st; tex_st.strid = strid_; tex_st.glidx = tex_glidx;
+                tex = _bucket.commit( strid_, std::move( tex_st ), bkt_hdl_ );
                 
                 BridgE->info( "tex: \"{}\": created from {}.", tex->strid, from_ );
             } else {

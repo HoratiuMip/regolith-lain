@@ -1,20 +1,27 @@
-#pragma once
-/**
- * @file: osp/immersive.hpp
- * @brief: 
- * @details:
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
-#include <rgh/osp/render3.hpp>
-
-#ifdef RGH_DEPCOM_ELIGIBLE_RENDER3
+#pragma once /*
+# FILE: osp/immersive.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# DETAILS: Graphics handler.
+*/
+#if defined( RGH_EXCOM_OPENGL ) && defined( RGH_EXCOM_STB ) && defined( RGH_EXCOM_TINYOBJ ) && defined( RGH_EXCOM_DEARIMGUI )
     #define RGH_DEPCOM_ELIGIBLE_IMMERSIVE
 #endif
 
 #ifdef RGH_DEPCOM_ELIGIBLE_IMMERSIVE
 
 #include <rgh/gep/dispenser.hpp>
+#include <rgh/gep/ringatomic.hpp>
 #include <rgh/osp/tempo.hpp>
+
+#include <GL/glew.h>
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+#include <GLFW/glfw3.h>
+#include <stb_image.h>
+#include <tiny_obj_loader.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
@@ -26,9 +33,164 @@
 #include <ImGuiFileDialog.h>
 #include <imgui-knobs.h>
 
+#define _RGH_IMM_STORE_TEX_2D GLint prev_tex_ = GL_NONE; glGetIntegerv( GL_TEXTURE_BINDING_2D, &prev_tex_ );
+#define _RGH_IMM_RESTORE_TEX_2D glBindTexture( GL_TEXTURE_2D, prev_tex_ );
+
+namespace rgh { class Immersive; }
+
+namespace rgh::imm {
+
+class Tex { friend class rgh::Immersive;
+public:
+    struct params_t {
+        GLuint   min_filter   = GL_LINEAR_MIPMAP_LINEAR;
+        GLuint   mag_filter   = GL_LINEAR;
+        bool     v_flip       = false;
+        bool     mipmaps      = true;
+    };
+
+public:
+    Tex( void ) = default;
+    Tex( const Tex& ) = delete;
+
+    Tex( 
+        RGH_IN   Tex&&   other_ 
+    ) : _glidx{ std::exchange( other_._glidx, GL_NONE ) } 
+    {}
+
+    ~Tex( void ) { this->deload(); }
+
+public:
+    status_t upload( 
+        RGH_IN       GLFWimage         image_,
+        RGH_IN_OPT   const params_t&   params_
+    ) {
+        RGH_ASSERT_OR( _glidx == GL_NONE ) return RGH_ERR_WOULD_OVRWR;
+
+        glGenTextures( 1, &_glidx );
+        RGH_ASSERT_OR( _glidx != GL_NONE ) return RGH_ERR_BADALLOC;
+
+        _RGH_IMM_STORE_TEX_2D;
+            glBindTexture( GL_TEXTURE_2D, _glidx );
+            glTexImage2D ( GL_TEXTURE_2D, 0, GL_RGBA, image_.width, image_.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_.pixels );
+            
+            _mipmaps = params_.mipmaps;
+            RGH_ASSERT_AND( _mipmaps && nullptr != image_.pixels ) glGenerateMipmap( GL_TEXTURE_2D );
+
+            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, params_.min_filter );
+            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, params_.mag_filter );
+        _RGH_IMM_RESTORE_TEX_2D;
+        return RGH_OK;
+    }
+
+    status_t deload( 
+        void 
+    ) {
+        RGH_ASSERT_OR( _glidx != GL_NONE ) return RGH_OK;
+
+        glDeleteTextures( 1, &_glidx );
+        _glidx = GL_NONE; 
+
+        return RGH_OK;
+    }
+
+    status_t reload( 
+        RGH_IN   GLFWimage   image_
+    ) {
+        _RGH_IMM_STORE_TEX_2D;
+            glBindTexture( GL_TEXTURE_2D, _glidx );
+            glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, image_.width, image_.height, GL_RGBA, GL_UNSIGNED_BYTE, image_.pixels );
+            RGH_ASSERT_AND( _mipmaps && nullptr != image_.pixels ) glGenerateMipmap( GL_TEXTURE_2D );
+        _RGH_IMM_RESTORE_TEX_2D;
+
+        return RGH_OK;
+    }
+
+_RGH_PROTECTED:
+    GLuint   _glidx     = GL_NONE;
+    bool     _mipmaps   = false;
+
+public:
+    operator GLuint ( void ) { return _glidx; }
+    GLuint get( void ) { return _glidx; }
+};
+
+class Ren_target { friend class rgh::Immersive;
+public:
+    Ren_target( void ) = default;
+
+    Ren_target( 
+        RGH_IN   glm::vec< 2, int >   r_ 
+    ) 
+    : _r{ r_ }
+    {
+        this->upload();
+    }
+
+    ~Ren_target( void ) { this->deload(); }
+
+_RGH_PROTECTED:
+    GLuint               _tex_glidx   = GL_NONE;
+    GLuint               _fbo         = GL_NONE;
+    GLuint               _rbo         = GL_NONE;
+    glm::vec< 2, int >   _r           = {};
+
+public:
+    status_t upload( void ) {
+        RGH_ASSERT_OR( _tex_glidx == GL_NONE ) return RGH_ERR_WOULD_OVRWR;
+        RGH_ASSERT_OR( _r.x > 0 && _r.y > 0 ) return RGH_ERR_BADARG;
+
+        _RGH_IMM_STORE_TEX_2D;
+            glGenTextures  ( 1, &_tex_glidx );
+            glBindTexture  ( GL_TEXTURE_2D, _tex_glidx );
+            glTexImage2D   ( GL_TEXTURE_2D, 0, GL_RGBA, _r.x, _r.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr );
+            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+            glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+        _RGH_IMM_RESTORE_TEX_2D;
+
+        glGenFramebuffers( 1, &_fbo );
+        glBindFramebuffer( GL_FRAMEBUFFER, _fbo );
+
+        glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _tex_glidx, 0 );
+
+        glGenRenderbuffers   ( 1, &_rbo );
+        glBindRenderbuffer   ( GL_RENDERBUFFER, _rbo );
+        glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, _r.x, _r.y );
+        glBindRenderbuffer   ( GL_RENDERBUFFER, GL_NONE );
+
+        glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _rbo );
+        glBindFramebuffer        ( GL_FRAMEBUFFER, GL_NONE );
+    }
+
+    status_t upload( 
+        RGH_IN   glm::vec< 2, int >   r_ 
+    ) {
+        _r = r_; return this->upload();
+    }
+
+    status_t deload(
+        void
+    ) {
+        RGH_ASSERT_AND( GL_NONE != _tex_glidx ) { glDeleteTextures( 1, &_tex_glidx ); _tex_glidx = GL_NONE; }                   
+        RGH_ASSERT_AND( GL_NONE != _fbo )       { glDeleteFramebuffers( 1, &_fbo );   _fbo       = GL_NONE; }
+        RGH_ASSERT_AND( GL_NONE != _rbo )       { glDeleteRenderbuffers( 1, &_rbo );  _rbo       = GL_NONE; }
+
+        return RGH_OK;
+    }
+};
+
+}
+
 namespace rgh {
 
-class Immersive  {
+class Immersive {
+public:
+    enum SrfBeginAs_ {
+        SrfBeginAs_Default, SrfBeginAs_Iconify, SrfBeginAs_Maximize, SrfBeginAs_Hide
+    };
+
 public:
     struct frame_cb_args_t {
         void*    ctx;
@@ -41,99 +203,156 @@ public:
     struct exit_cb_args_t {
         void*   ctx;
     };
-
-public:
     typedef   std::function< status_t( const frame_cb_args_t& ) >   frame_callback_t;
     typedef   std::function< status_t( const init_cb_args_t&  ) >   init_callback_t;   
-    typedef   std::function< void( const exit_cb_args_t& ) >        exit_callback_t;       
-
-public:
-    enum SrfBeginAs_ {
-        SrfBeginAs_Default, SrfBeginAs_Iconify, SrfBeginAs_Maximize, SrfBeginAs_Hide
-    };
-
+    typedef   std::function< void( const exit_cb_args_t& ) >        exit_callback_t; 
+      
 public:
     struct config_t {
-        void*                   ctx           = nullptr;
+        void*              ctx          = nullptr;
 
-        const char*             title         = RGH_VERSION_STRING"/Immersive";
-        int                     width         = 64;
-        int                     height        = 64;
+        const char*        title        = RGH_VERSION_STRING"/Immersive";
+        int                width        = 64;
+        int                height       = 64;
 
-        SrfBeginAs_             srf_bgn_as    = SrfBeginAs_Default;
+        SrfBeginAs_        srf_bgn_as   = SrfBeginAs_Default;
 
-        std::filesystem::path   icon_path     = {};
+        init_callback_t    init_cb      = nullptr;
+        frame_callback_t   loop_cb      = nullptr;
+        exit_callback_t    exit_cb      = nullptr;
 
-        init_callback_t         init_cb       = nullptr;
-        frame_callback_t        loop_cb       = nullptr;
-        exit_callback_t         exit_cb       = nullptr;
-
-    } config;
-
-public:
-    HVec< imm::Cluster >     _cluster      = nullptr;
-    imm::lens_t              _lens_0       = { glm::vec3{0,0,5}, glm::vec3{0,0,0}, glm::vec3{0,1,0} };
+    };
 
 _RGH_PROTECTED:
-    std::atomic_bool         _is_running   = false;
+    config_t           _config    = {};
+    std::atomic_bool   _running   = { false };
 
+#pragma region WINDOW
 _RGH_PROTECTED:
+    GLFWwindow*                               _glfwnd      = nullptr;
+    const char*                               _rend_str    = nullptr;     
+    const char*                               _gl_str      = nullptr;
+    std::stack< imm::Ren_target* >            _ren_targs   = {};
     Dispenser< std::vector< std::string > >   _dnd_files   = { DispenserMode_Lock };
+
 public:
-    bool has_dropped_files( void ) const { return not _dnd_files.watch()->empty(); }
+    void push_render_target( 
+        RGH_IN   imm::Ren_target*   ren_trg_ 
+    ) {
+        _ren_targs.push( ren_trg_ );
+        glBindFramebuffer( GL_FRAMEBUFFER, ren_trg_->_fbo );
+        glViewport( 0, 0, ren_trg_->_r.x, ren_trg_->_r.y );
+    }
+
+    void pop_render_target( 
+        void 
+    ) {
+        _ren_targs.pop();
+        if( not _ren_targs.empty() ) {
+            auto* ren_targ = _ren_targs.top();
+            glBindFramebuffer( GL_FRAMEBUFFER, ren_targ->_fbo );
+            glViewport( 0, 0, ren_targ->_r.x, ren_targ->_r.y );
+        } else {
+            glBindFramebuffer( GL_FRAMEBUFFER, GL_NONE );
+            int w, h; glfwGetFramebufferSize( _glfwnd, &w, &h );
+            glViewport( 0, 0, w, h );
+        }
+    }
+
+public:
+    void clear( 
+        RGH_IN   glm::vec4   c_ = { .0, .0, .0, 1.0 } 
+    ) {
+        glClearColor( c_.r, c_.g, c_.b, c_.a );
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    }
+
+    void swap( 
+        void 
+    ) {
+        glfwSwapBuffers( _glfwnd );
+    }
+
+public:
+    RGH_inline void engage_face_culling( void ) { glEnable( GL_CULL_FACE ); }
+    RGH_inline void disengage_face_culling( void ) { glDisable( GL_CULL_FACE ); }
+
+    RGH_inline void mode_fill( void ) { glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ); }
+    RGH_inline void mode_wireframe( void ) { glPolygonMode( GL_FRONT_AND_BACK, GL_LINE ); }
+    RGH_inline void mode_points( void ) { glPolygonMode( GL_FRONT_AND_BACK, GL_POINT ); }
+
+    RGH_inline void engage_depth_test( void ) { glEnable( GL_DEPTH_TEST ); }
+    RGH_inline void disengage_depth_test( void ) { glDisable( GL_DEPTH_TEST ); }
+
+public:
+    bool has_dropped_files( void ) const { return !_dnd_files.watch()->empty(); }
     auto flush_dropped_files( void ) { return std::move( *_dnd_files.control() ); }
 
+public:
+    status_t set_icon( 
+        RGH_IN   GLFWimage   img_ 
+    ) {
+        glfwSetWindowIcon( _glfwnd, 1, &img_ );
+        return RGH_OK;
+    }
+#pragma endregion WINDOW
+
+#pragma region ASSETS
+public:
+    struct tex_payload_t {
+        HVec< Tex >                 tex      = nullptr;
+        std::unique_ptr< byte_t >   pixels   = nullptr;
+        int                         width    = 0;
+        int                         height   = 0;
+    };
+
+_RGH_PROTECTED:
+    Ring_atomic_MPSC< tex_payload_t, 16 >   _tex_payloads_ring   = {};
+
+_RGH_PROTECTED:
+    void _resolve_payloads(
+        void
+    ) {
+        tex_payload_t payload;
+        RGH_ASSERT_STATUS_OR( _tex_payloads_ring.pop( &payload ) ) return;
+
+        payload.tex->upload( )
+    }
+
+public:
+    status_t push_tex_payload( 
+        IN   tex_payload_t    payload_
+    ) {
+        RGH_ASSERT_OR( payload_.tex ) return RGH_ERR_BADARG;
+        return _tex_payloads_ring.push( std::move( payload_ ) );
+    }
+
+_RGH_PROTECTED:
+    // struct _assets_t {
+    //     /* A perlin noise splasher by XorDev: https://x.com/XorDev/status/1894123951401378051. */
+    //     struct idle_splash_t {
+    //         inline static float          vrtx[]   = { 1,1, 1,-1, -1,-1, -1,1 };
+    //         inline static unsigned int   idx[]    = { 0,1,3, 1,2,3 };
+    //         GLuint                       VAO      = GL_NONE;
+    //         GLuint                       VBO      = GL_NONE;
+    //         GLuint                       EBO      = GL_NONE;
+    //         HVec< imm::pipe_t >          pipe     = nullptr;
+    //     } idle_splash;
+    // } _assets;
+
+    // void _init_assets( void );
+    // void _clean_assets( void );
+
+public:
+    status_t assets_idle_splash_render( const frame_cb_args_t& args_ );
+#pragma endregion ASSETS
+
+#pragma region DEARIMGUI
 public:
     struct imgui_t {
         ImGuiIO*      io    = nullptr;
         ImGuiStyle*   stl   = nullptr;
     } imgui;
-
-_RGH_PROTECTED:
-    struct _assets_t {
-        /* A perlin noise splasher by XorDev: https://x.com/XorDev/status/1894123951401378051. */
-        struct idle_splash_t {
-            inline static float          vrtx[]   = { 1,1, 1,-1, -1,-1, -1,1 };
-            inline static unsigned int   idx[]    = { 0,1,3, 1,2,3 };
-            GLuint                       VAO      = GL_NONE;
-            GLuint                       VBO      = GL_NONE;
-            GLuint                       EBO      = GL_NONE;
-            HVec< imm::pipe_t >          pipe     = nullptr;
-        } idle_splash;
-    } _assets;
-
-    void _init_assets( void );
-    void _clean_assets( void );
-
-public:
-    status_t assets_idle_splash_render( const frame_cb_args_t& args_ );
-
-public:
-    RGH_inline imm::Cluster& cluster( void ) {
-        return *_cluster;
-    }
-    RGH_inline auto* operator -> ( void ) {
-        return _cluster.get();
-    }
-
-    RGH_inline imm::lens_t lens_0( void ) {
-        return _lens_0;
-    }
-
-    RGH_inline auto native_window_handle( void ) {
-        return _cluster->handle();
-    }
-
-public:
-    status_t set_icon( GLFWimage& img_ ) {
-        glfwSetWindowIcon( _cluster->handle(), 1, &img_ );
-        return RGH_OK;
-    }
-
-public:
-    status_t main( int argc_, char* argv_[], const config_t& config_ );
-
-    void sig_main_exit( void ) { RGH_ASSERT_AND( _cluster ) glfwSetWindowShouldClose( _cluster->handle(), GLFW_TRUE ); }
 
 public:
     RGH_inline static void movx( float dx_ ) { ImGui::SetCursorPosX( ImGui::GetCursorPosX() + dx_ ); }
@@ -142,7 +361,14 @@ public:
     RGH_inline static void movxy( const ImVec2& dv_ ) { ImGui::SetCursorPos( dv_ ); }
     RGH_inline static void movxy( const ImVec2& dv_, const ImVec2& ddv_ ) { movxy( dv_ + ddv_ ); }
 
-    RGH_inline static auto xycp( void ) { return ImGui::GetCursorPos(); }
+    RGH_inline static auto cursor( void ) { return ImGui::GetCursorPos(); }
+
+    inline static ImVec2   _chpt_cursor   = {};
+    RGH_inline static auto chpt_get( void ) { return _chpt_cursor; }
+    RGH_inline static void chpt_here( void ) { _chpt_cursor = ImGui::GetCursorPos(); }  
+    RGH_inline static void chpt_return( const ImVec2& ofs_ = {} ) { movxy( _chpt_cursor + ofs_ ); }
+    RGH_inline static auto chpt_dx( void ) { return cursor().x - _chpt_cursor.x; }
+    RGH_inline static auto chpt_dy( void ) { return cursor().y - _chpt_cursor.y; }
 
     RGH_inline static void scale_font( float scl_ ) { ImGui::SetWindowFontScale( scl_ ); }
 
@@ -173,7 +399,7 @@ public:
                 .path  = ".",
                 .flags = flags_
             } );
-        } else if( auto files_ = imm_->flush_dropped_files(); not files_.empty() ) {
+        } else if( imm_ ) if( auto files_ = imm_->flush_dropped_files(); not files_.empty() ) {
             return files_.front();
         }
         if( ImGuiFileDialog::Instance()->Display( key_id_, ImGuiWindowFlags_NoCollapse, min_sz_ ) ) {
@@ -184,7 +410,20 @@ public:
         }
         return {};
     }
+#pragma endregion DEARIMGUI
 
+public:
+    status_t main( 
+        RGH_IN   int               argc_, 
+        RGH_IN   char*             argv_[], 
+        RGH_IN   const config_t&   config_ 
+    );
+
+    void sig_main_exit( 
+        void 
+    ) { 
+        _running.store( false, std::memory_order_relaxed ); 
+    }
 };
 
 }
