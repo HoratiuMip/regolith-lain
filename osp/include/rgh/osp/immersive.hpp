@@ -299,32 +299,96 @@ public:
 
 #pragma region ASSETS
 public:
-    struct tex_payload_t {
-        HVec< Tex >                 tex      = nullptr;
-        std::unique_ptr< byte_t >   pixels   = nullptr;
-        int                         width    = 0;
-        int                         height   = 0;
+    struct payload_t {
+        enum Verb_ {
+            Verb_Nop,
+            Verb_TextureUpload, Verb_TextureReload
+        };
+        
+    #define _ADD_UN_STRUCT( struct_, fields_ ) struct struct_##_t{ fields_ }; payload_t( Verb_ verb_, struct_##_t st_ ) : verb{ verb_ }, struct_{ std::move( st_ ) } {}
+        _ADD_UN_STRUCT( texture_upload,  
+            HVec< imm::Tex >     invk   = nullptr;
+            HVec< byte_t >       pxls   = nullptr;
+            int                  w      = 0;
+            int                  h      = 0;
+            imm::Tex::params_t   prms   = {};
+        )
+        _ADD_UN_STRUCT( texture_reload, 
+            HVec< imm::Tex >     invk   = nullptr;
+            HVec< byte_t >       pxls   = nullptr;
+            int                  w      = 0;
+            int                  h      = 0;
+        )
+    #undef _ADD_UN_STRUCT
+        union {
+            char               dummy             = 0x00;    
+
+            texture_upload_t   texture_upload;
+            texture_reload_t   texture_reload;
+        };
+
+        Verb_   verb;
+
+        payload_t( void ) = default;
+
+        payload_t( payload_t&& other_ ) noexcept : verb{ other_.verb } {
+            switch( verb ) {
+                case Verb_Nop: break;
+                case Verb_TextureUpload:
+                    ::new( &texture_upload ) texture_upload_t{ std::move( other_.texture_upload ) };
+                    break;
+                case Verb_TextureReload:
+                    ::new( &texture_reload ) texture_reload_t{ std::move( other_.texture_reload ) };
+                    break;
+            }
+        }
+        payload_t& operator = ( payload_t&& other_ ) noexcept {
+            this->~payload_t();
+            ::new( this ) payload_t{ std::move( other_ ) };
+            return *this;
+        }
+
+        ~payload_t( void ) {
+            switch( verb ) {
+                case payload_t::Verb_Nop: break;
+
+                case payload_t::Verb_TextureUpload: texture_upload.~texture_upload_t(); break;
+                case payload_t::Verb_TextureReload: texture_reload.~texture_reload_t(); break;
+            }
+        }
     };
 
 _RGH_PROTECTED:
-    Ring_atomic_MPSC< tex_payload_t, 16 >   _tex_payloads_ring   = {};
+    Ring_atomic_MPSC< payload_t, 16 >   _payload_ring;
 
 _RGH_PROTECTED:
     void _resolve_payloads(
         void
     ) {
-        tex_payload_t payload;
-        RGH_ASSERT_STATUS_OR( _tex_payloads_ring.pop( &payload ) ) return;
+        payload_t payload = {};
+        RGH_ASSERT_STATUS_OR( _payload_ring.pop( &payload ) ) return;
 
-        payload.tex->upload( )
+        switch( payload.verb ) {
+            case payload_t::Verb_Nop: break;
+
+            case payload_t::Verb_TextureUpload: {
+                auto& noun = payload.texture_upload;
+
+                noun.invk->upload( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() }, noun.prms );
+                break; }
+            case payload_t::Verb_TextureReload: {
+                auto& noun = payload.texture_reload;
+
+                noun.invk->reload( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() } );
+                break; }
+        }
     }
 
 public:
-    status_t push_tex_payload( 
-        IN   tex_payload_t    payload_
+    status_t push_payload( 
+        IN   payload_t   payload_
     ) {
-        RGH_ASSERT_OR( payload_.tex ) return RGH_ERR_BADARG;
-        return _tex_payloads_ring.push( std::move( payload_ ) );
+        return _payload_ring.push( std::move( payload_ ) );
     }
 
 _RGH_PROTECTED:

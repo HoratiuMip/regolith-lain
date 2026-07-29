@@ -48,7 +48,7 @@ public:
 
         RGH_ASSERT_OR( head != tail ) return RGH_ERR_DEPLETED;
 
-        *dst_ = _buffer[ head ];
+        *dst_ = std::move( _buffer[ head ] );
         
         _head.store( _NEXT_ITR( head ), std::memory_order_release );
         return RGH_OK;

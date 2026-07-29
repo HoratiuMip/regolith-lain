@@ -143,7 +143,7 @@ public:
     }
 
     virtual HVec< Token > HyN_split( int offset_, Route& rte_ ) {
-        return new Token{};
+        return HVec< Token >::make();
     }
 
 };

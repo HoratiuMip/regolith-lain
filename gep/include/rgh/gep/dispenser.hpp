@@ -387,21 +387,24 @@ _RGH_PROTECTED:
     } _M_;
 
 public:
-    RGH_inline _T_* get( void ) {
-        switch( _disp->_mode ) {
+    template< typename Self_ > std::conditional_t< _IS_CONTROL_, _T_*, const _T_* > get( this Self_&& self_ ) {
+        switch( self_._disp->_mode ) {
             case DispenserMode_Lock: [[fallthrough]];
-            case DispenserMode_Trylock: return _disp->_M_.lock.block.get();
+            case DispenserMode_Trylock: return self_._disp->_M_.lock.block.get();
             case DispenserMode_Drop: [[fallthrough]];
-            case DispenserMode_DropInterval: return _M_.drop.block.get();
+            case DispenserMode_DropInterval: return self_._M_.drop.block.get();
             case DispenserMode_Swap: [[fallthrough]];
-            case DispenserMode_ReverseSwap: return _M_.swap.block;
+            case DispenserMode_ReverseSwap: return self_._M_.swap.block;
         }
         return nullptr;
     }
 
 public:
-    RGH_inline _T_* operator -> ( void ) { return this->get(); }
-    RGH_inline _T_& operator * ( void ) { return *this->get(); }
+    _T_* operator -> () requires (_IS_CONTROL_) { return this->get(); }
+    _T_& operator *  () requires (_IS_CONTROL_) { return *this->get(); }
+
+    const _T_* operator -> () const requires (!_IS_CONTROL_) { return this->get(); }
+    const _T_& operator *  () const requires (!_IS_CONTROL_) { return *this->get(); }
 
 public:
     RGH_inline operator bool ( void ) const {

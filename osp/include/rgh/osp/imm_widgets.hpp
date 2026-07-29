@@ -68,7 +68,7 @@ _RGH_PROTECTED:
     std::string             _sel_id   = "";
 
 public:
-    std::tuple< io::COM_port_t*, bool, bool > imm_frame( io::COM_ports::watch_t& watch_ ) {
+    std::tuple< const io::COM_port_t*, bool, bool > imm_frame( io::COM_ports::watch_t& watch_ ) {
         bool rescan = ImGui::Button( "Scan for COM ports" );
 
         auto& ports = *watch_;

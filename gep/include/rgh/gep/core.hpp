@@ -34,28 +34,47 @@
 
 namespace rgh {
 
-template< typename _T_ >
-struct HVec : public std::shared_ptr< _T_ > {
-    using std::shared_ptr< _T_ >::shared_ptr;
-    
-    HVec( const HVec< _T_ >& other_ ) = default;
-    HVec( HVec< _T_ >&& other_ ) = default;
-    HVec( const std::shared_ptr< _T_ >&  ptr_ ) : std::shared_ptr< _T_ >{ ptr_ } {}
-    HVec( std::shared_ptr< _T_ >&& ptr_ ) : std::shared_ptr< _T_ >{ std::move( ptr_ ) } {}
-    HVec( _T_* ptr_ ) { this->reset( ptr_ ); }
-    HVec( _T_& ref_ ) : std::shared_ptr< _T_ >{ &ref_, [] ( [[maybe_unused]]_T_* ) static -> void {} } {}
-    
-    RGH_inline HVec< _T_ >& operator = ( const HVec< _T_ >& other_ ) { (std::shared_ptr< _T_ >&)*this = (std::shared_ptr< _T_ >&)other_; return *this; }
-    RGH_inline HVec< _T_ >& operator = ( HVec< _T_ >&& other_ ) { (std::shared_ptr< _T_ >&)*this = (std::shared_ptr< _T_ >&&)other_; return *this; }
+template<typename _T_>
+class HVec {
+_RGH_PROTECTED:
+    typedef   std::shared_ptr< _T_ >   sptr_t;
 
-    template< typename ...Args_ >
-    RGH_inline static HVec< _T_ > make( Args_&&... args_ ) { return std::make_shared< _T_ >( std::forward< Args_ >( args_ )... ); }
+public:
+    HVec() = default;
+    HVec( std::nullptr_t ) : HVec{} {}
 
-    RGH_inline bool operator == ( const _T_* ptr_ ) const { return this->get() == ptr_; }
-    RGH_inline bool operator != ( std::nullptr_t ) const { return this->get() != nullptr; }
+    HVec( _T_* ptr_ ) : _sptr{ ptr_ } {}
+    HVec( _T_& ref_ ) : _sptr{ &ref_, [](_T_*){} } {}
 
-    RGH_inline operator _T_& ( void ) { return **this; }
-    RGH_inline operator const _T_& ( void ) const { return **this; }
+    HVec( const sptr_t& sp_ ) : _sptr{ sp_ } {}
+    HVec( sptr_t&& sp_ ) : _sptr{ std::move( sp_ ) } {}
+
+    HVec( const HVec& ) = default;
+    HVec( HVec&& ) = default;
+
+    HVec& operator = ( const HVec& ) = default;
+    HVec& operator = ( HVec&& ) = default;
+    HVec& operator = ( std::nullptr_t ) { _sptr.reset(); return *this; }
+
+    _T_* get       () const { return _sptr.get(); }
+    auto use_count () const { return _sptr.use_count(); }
+    void reset     ()       { _sptr.reset(); }
+
+    _T_& operator *  () const { return *_sptr; }
+    _T_* operator -> () const { return _sptr.get(); }
+
+    bool operator == ( const _T_* ptr_ ) const { return _sptr.get() == ptr_; }
+    bool operator != ( std::nullptr_t )  const { return _sptr != nullptr; }
+
+    explicit operator bool () const { return static_cast< bool >( _sptr ); }
+
+    operator _T_& () const { return *_sptr; }
+
+    template< typename... Args_ >
+    static HVec make( Args_&&... args_ ) { return HVec{ std::make_shared< _T_ >( std::forward< Args_ >( args_ )... ) }; }
+
+_RGH_PROTECTED:
+    sptr_t   _sptr   = nullptr;
 };
 
 template< typename _T_ >

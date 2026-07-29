@@ -104,16 +104,16 @@ public:
     }
 
 public:
-    RGH_inline bool daemon_is_positive( void ) {
+    RGH_inline bool daemon_is_positive( void ) const {
         const auto state = this->daemon_state();
         return State_STARTED == state || State_STARTING == state;
     }
 
-    RGH_inline bool daemon_is_started( void ) {
+    RGH_inline bool daemon_is_started( void ) const {
         return State_STARTED == this->daemon_state();
     }
 
-    RGH_inline bool daemon_is_stable( void ) {
+    RGH_inline bool daemon_is_stable( void ) const {
         const auto state = this->daemon_state();
         return state != State_STOPPING and state != State_STARTING;
     }
@@ -201,7 +201,7 @@ public:
 
 public:
     status_t iterate_register( void ) {
-        auto reg = _register.watch();
+        auto reg = _register.control();
 
         for( auto& dock : *reg ) {
             RGH_ASSERT_OR( dock.ref->daemon_is_stable() ) continue;
@@ -237,7 +237,7 @@ public:
         auto reg = _register.watch();
 
         std::string out = std::format( "/// Daemon cluster report - {} daemons:\n", reg->size() );
-        for( const auto& dmn : *reg ) out += dmn.ref->daemon_report( ctx_ );
+        for( const auto& dock : *reg ) out += dock.ref->daemon_report( ctx_ );
 
         return out;
     }
