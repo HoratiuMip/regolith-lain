@@ -14,6 +14,7 @@
 #   > TRYLOCK - Wach: try lock shared | Control: lock unique.
 #   > DROP - Watch: load pointer | Control: alloc and store pointer.
 #
+# CAUTION: Other modes are under redisign, as is the whole dispenser thing. Do not use them yet.
 */
 #include <rgh/gep/core.hpp>
 
@@ -242,7 +243,7 @@ public:
                         auto sis_ctl_idx = crt_ctl_idx ^ 0x1;
                         std::lock_guard lock_sis{ _disp->_M_.swap.mtxs[ sis_ctl_idx ] };
                         std::lock_guard lock_crt{ _disp->_M_.swap.mtxs[ crt_ctl_idx ] };
-                        _disp->_M_.swap.blocks[ sis_ctl_idx ]->operator=( *_disp->_M_.swap.blocks[ crt_ctl_idx ] );
+                        //_disp->_M_.swap.blocks[ sis_ctl_idx ]->operator=( *_disp->_M_.swap.blocks[ crt_ctl_idx ] );
                     }
 
                     _M_.swap.ctl_idx = _disp->_M_.swap.ctl_idx.fetch_xor( 0x1, std::memory_order_acquire );

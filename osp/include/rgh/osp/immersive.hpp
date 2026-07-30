@@ -58,10 +58,10 @@ public:
     ) : _glidx{ std::exchange( other_._glidx, GL_NONE ) } 
     {}
 
-    ~Tex( void ) { this->deload(); }
+    ~Tex( void ) { this->deld(); }
 
 public:
-    status_t upload( 
+    status_t upld( 
         RGH_IN       GLFWimage         image_,
         RGH_IN_OPT   const params_t&   params_
     ) {
@@ -85,7 +85,7 @@ public:
         return RGH_OK;
     }
 
-    status_t deload( 
+    status_t deld( 
         void 
     ) {
         RGH_ASSERT_OR( _glidx != GL_NONE ) return RGH_OK;
@@ -96,7 +96,7 @@ public:
         return RGH_OK;
     }
 
-    status_t reload( 
+    status_t reld( 
         RGH_IN   GLFWimage   image_
     ) {
         _RGH_IMM_STORE_TEX_2D;
@@ -126,10 +126,10 @@ public:
     ) 
     : _r{ r_ }
     {
-        this->upload();
+        this->upld();
     }
 
-    ~Ren_target( void ) { this->deload(); }
+    ~Ren_target( void ) { this->deld(); }
 
 _RGH_PROTECTED:
     GLuint               _tex_glidx   = GL_NONE;
@@ -138,7 +138,7 @@ _RGH_PROTECTED:
     glm::vec< 2, int >   _r           = {};
 
 public:
-    status_t upload( void ) {
+    status_t upld( void ) {
         RGH_ASSERT_OR( _tex_glidx == GL_NONE ) return RGH_ERR_WOULD_OVRWR;
         RGH_ASSERT_OR( _r.x > 0 && _r.y > 0 ) return RGH_ERR_BADARG;
 
@@ -164,13 +164,13 @@ public:
         glBindFramebuffer        ( GL_FRAMEBUFFER, GL_NONE );
     }
 
-    status_t upload( 
+    status_t upld( 
         RGH_IN   glm::vec< 2, int >   r_ 
     ) {
-        _r = r_; return this->upload();
+        _r = r_; return this->upld();
     }
 
-    status_t deload(
+    status_t deld(
         void
     ) {
         RGH_ASSERT_AND( GL_NONE != _tex_glidx ) { glDeleteTextures( 1, &_tex_glidx ); _tex_glidx = GL_NONE; }                   
@@ -302,18 +302,18 @@ public:
     struct payload_t {
         enum Verb_ {
             Verb_Nop,
-            Verb_TextureUpload, Verb_TextureReload
+            Verb_TexUpld, Verb_TexReld
         };
         
     #define _ADD_UN_STRUCT( struct_, fields_ ) struct struct_##_t{ fields_ }; payload_t( Verb_ verb_, struct_##_t st_ ) : verb{ verb_ }, struct_{ std::move( st_ ) } {}
-        _ADD_UN_STRUCT( texture_upload,  
+        _ADD_UN_STRUCT( tex_upld,  
             HVec< imm::Tex >     invk   = nullptr;
             HVec< byte_t >       pxls   = nullptr;
             int                  w      = 0;
             int                  h      = 0;
             imm::Tex::params_t   prms   = {};
         )
-        _ADD_UN_STRUCT( texture_reload, 
+        _ADD_UN_STRUCT( tex_reld, 
             HVec< imm::Tex >     invk   = nullptr;
             HVec< byte_t >       pxls   = nullptr;
             int                  w      = 0;
@@ -321,10 +321,10 @@ public:
         )
     #undef _ADD_UN_STRUCT
         union {
-            char               dummy             = 0x00;    
+            char         dummy       = 0x00;    
 
-            texture_upload_t   texture_upload;
-            texture_reload_t   texture_reload;
+            tex_upld_t   tex_upld;
+            tex_reld_t   tex_reld;
         };
 
         Verb_   verb;
@@ -334,11 +334,11 @@ public:
         payload_t( payload_t&& other_ ) noexcept : verb{ other_.verb } {
             switch( verb ) {
                 case Verb_Nop: break;
-                case Verb_TextureUpload:
-                    ::new( &texture_upload ) texture_upload_t{ std::move( other_.texture_upload ) };
+                case Verb_TexUpld:
+                    ::new( &tex_upld ) tex_upld_t{ std::move( other_.tex_upld ) };
                     break;
-                case Verb_TextureReload:
-                    ::new( &texture_reload ) texture_reload_t{ std::move( other_.texture_reload ) };
+                case Verb_TexReld:
+                    ::new( &tex_reld ) tex_reld_t{ std::move( other_.tex_reld ) };
                     break;
             }
         }
@@ -352,8 +352,8 @@ public:
             switch( verb ) {
                 case payload_t::Verb_Nop: break;
 
-                case payload_t::Verb_TextureUpload: texture_upload.~texture_upload_t(); break;
-                case payload_t::Verb_TextureReload: texture_reload.~texture_reload_t(); break;
+                case payload_t::Verb_TexUpld: tex_upld.~tex_upld_t(); break;
+                case payload_t::Verb_TexReld: tex_reld.~tex_reld_t(); break;
             }
         }
     };
@@ -371,15 +371,15 @@ _RGH_PROTECTED:
         switch( payload.verb ) {
             case payload_t::Verb_Nop: break;
 
-            case payload_t::Verb_TextureUpload: {
-                auto& noun = payload.texture_upload;
+            case payload_t::Verb_TexUpld: {
+                auto& noun = payload.tex_upld;
 
-                noun.invk->upload( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() }, noun.prms );
+                noun.invk->upld( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() }, noun.prms );
                 break; }
-            case payload_t::Verb_TextureReload: {
-                auto& noun = payload.texture_reload;
+            case payload_t::Verb_TexReld: {
+                auto& noun = payload.tex_reld;
 
-                noun.invk->reload( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() } );
+                noun.invk->reld( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() } );
                 break; }
         }
     }
