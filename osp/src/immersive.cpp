@@ -122,7 +122,7 @@ status_t Immersive::main(
     glfwWindowHint( GLFW_RESIZABLE, GL_TRUE );
     glfwWindowHint( GLFW_DECORATED, GL_TRUE );
 
-    if( SrfBeginAs_Maximize == _config.srf_bgn_as ) glfwWindowHint( GLFW_MAXIMIZED, GL_TRUE );
+    if( Maximize == _config.srf_bgn_as ) glfwWindowHint( GLFW_MAXIMIZED, GL_TRUE );
     
     _glfwnd = glfwCreateWindow( _config.width, _config.height, _config.title, nullptr, nullptr );
 
@@ -177,8 +177,8 @@ status_t Immersive::main(
 
     RGH_BRDG_LOGI( "imm: imgui component started." );
     
-    if     ( SrfBeginAs_Iconify == _config.srf_bgn_as ) glfwIconifyWindow( _glfwnd );
-    else if( SrfBeginAs_Hide    == _config.srf_bgn_as ) glfwHideWindow( _glfwnd );
+    if     ( Iconify == _config.srf_bgn_as ) glfwIconifyWindow( _glfwnd );
+    else if( Hide    == _config.srf_bgn_as ) glfwHideWindow( _glfwnd );
 
     //this->_init_assets();
     RGH_BRDG_LOGI( "imm: assets initialization complete." );

@@ -113,6 +113,10 @@ public:
         return State_STARTED == this->daemon_state();
     }
 
+    RGH_inline bool daemon_is_stopped( void ) const {
+        return State_STOPPED == this->daemon_state();
+    }
+
     RGH_inline bool daemon_is_stable( void ) const {
         const auto state = this->daemon_state();
         return state != State_STOPPING and state != State_STARTING;

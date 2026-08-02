@@ -187,8 +187,8 @@ namespace rgh {
 
 class Immersive {
 public:
-    enum SrfBeginAs_ {
-        SrfBeginAs_Default, SrfBeginAs_Iconify, SrfBeginAs_Maximize, SrfBeginAs_Hide
+    enum Word_ {
+        Default, Iconify, Maximize, Hide
     };
 
 public:
@@ -215,7 +215,7 @@ public:
         int                width        = 64;
         int                height       = 64;
 
-        SrfBeginAs_        srf_bgn_as   = SrfBeginAs_Default;
+        Word_              srf_bgn_as   = Default;
 
         init_callback_t    init_cb      = nullptr;
         frame_callback_t   loop_cb      = nullptr;
@@ -447,6 +447,8 @@ public:
         va_list args; va_start( args, fmt_ ); ImGui::TextV( fmt_, args ); va_end( args );
         ImGui::SetCursorPosX( x );
     }
+
+    RGH_inline static bool was_dbl_clk( void ) { return ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked( ImGuiMouseButton_Left ); }
 
     static std::string select_file_button( 
         RGH_IN_OPT   Immersive*              imm_,
