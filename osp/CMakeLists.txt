@@ -92,6 +92,7 @@ if( RGH_Flag_ExcomActive )
     RGH_Fnc_JustCloneRepo( "https://github.com/aiekick/ImGuiFileDialog.git" "v0.6.8" imgui_file_dialog "${_excom_dir}" )
     RGH_Fnc_JustCloneRepo( "https://github.com/altschuler/imgui-knobs.git" "main" imgui_knobs "${_excom_dir}" )
     RGH_Fnc_JustCloneRepo( "https://github.com/thedmd/imgui-node-editor.git" "master" imgui_node_editor "${_excom_dir}" )
+    RGH_Fnc_JustCloneRepo( "https://github.com/dalerank/imspinner.git" "master" imgui_spinners "${_excom_dir}" )
 
     file( GLOB _imgui_source_files "${_excom_dir}/imgui/*.cpp" )
     add_library( ImGui STATIC 
@@ -127,6 +128,11 @@ if( RGH_Flag_ExcomActive )
     target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui/" )
     target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui_node_editor/" )
 
+    file( GLOB _imgui_spinners_source_files "${_excom_dir}/imgui_spinners/*.cpp" )
+    add_library( ImSpinners STATIC ${_imgui_spinners_source_files} )
+    target_include_directories( ImSpinners PUBLIC "${_excom_dir}/imgui/" )
+    target_include_directories( ImSpinners PUBLIC "${_excom_dir}/imgui_spinners/" )
+
     add_library( One_ImGui INTERFACE )
     target_link_libraries( One_ImGui INTERFACE
         ImGui
@@ -134,6 +140,7 @@ if( RGH_Flag_ExcomActive )
         ImFileDialog
         ImKnobs
         ImNodeEditor
+        ImSpinners
     )
 
     target_link_libraries( RGH_OSp

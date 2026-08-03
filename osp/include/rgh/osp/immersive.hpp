@@ -14,7 +14,7 @@
 
 #include <rgh/gep/dispenser.hpp>
 #include <rgh/gep/ringatomic.hpp>
-#include <rgh/osp/tempo.hpp>
+#include <rgh/osp/core.hpp>
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -32,6 +32,8 @@
 #include <implot.h>
 #include <ImGuiFileDialog.h>
 #include <imgui-knobs.h>
+#include <imspinner_dots.h>
+#include <imspinner_bars.h>
 
 #define _RGH_IMM_STORE_TEX_2D GLint prev_tex_ = GL_NONE; glGetIntegerv( GL_TEXTURE_BINDING_2D, &prev_tex_ );
 #define _RGH_IMM_RESTORE_TEX_2D glBindTexture( GL_TEXTURE_2D, prev_tex_ );
@@ -428,10 +430,11 @@ public:
     RGH_inline static void movxy( const ImVec2& dv_, const ImVec2& ddv_ ) { movxy( dv_ + ddv_ ); }
 
     RGH_inline static auto cursor( void ) { return ImGui::GetCursorPos(); }
+    RGH_inline static auto here( void ) { return ImGui::GetCursorPos(); }
 
     inline static ImVec2   _chpt_cursor   = {};
     RGH_inline static auto chpt_get( void ) { return _chpt_cursor; }
-    RGH_inline static void chpt_here( void ) { _chpt_cursor = ImGui::GetCursorPos(); }  
+    RGH_inline static auto chpt_here( void ) { return _chpt_cursor = ImGui::GetCursorPos(); }  
     RGH_inline static void chpt_return( const ImVec2& ofs_ = {} ) { movxy( _chpt_cursor + ofs_ ); }
     RGH_inline static auto chpt_dx( void ) { return cursor().x - _chpt_cursor.x; }
     RGH_inline static auto chpt_dy( void ) { return cursor().y - _chpt_cursor.y; }
