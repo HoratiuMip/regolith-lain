@@ -41,22 +41,9 @@ public:
 
 class COM_ports {
 public:
-    COM_ports( HVec< io::COM_ports > ports_ ) : _ports{ std::move( ports_ ) } {
-        /* @note The registered hotplug callback lambda function is invoked under a dispenser control, 
-            therefore there is no need to worry about races over the container. */
-        _ports->register_hotplug_callback( RGH_TXTUUID_FROM_THIS, [ this ] ( io::COM_ports::container_t& ports_ ) -> void {
-            auto itr = std::ranges::find_if( ports_, [ this ] ( const io::COM_port_t& port_ ) -> bool {
-                return port_.id == _sel_id;
-            } );
-            RGH_ASSERT_OR( ports_.end() != itr ) {
-                _sel    = -0x1;
-                _sel_id = "";
-                return;
-            }
+    COM_ports( void ) = default;
 
-            _sel = std::distance( ports_.begin(), itr );
-        } );
-    }
+    COM_ports( HVec< io::COM_ports > ports_ ) { this->bind( std::move( ports_ ) ); }
 
     ~COM_ports( void ) {
         _ports->unregister_hotplug_callback( RGH_TXTUUID_FROM_THIS );
@@ -68,8 +55,33 @@ _RGH_PROTECTED:
     std::string             _sel_id   = "";
 
 public:
-    std::tuple< const io::COM_port_t*, bool, bool > imm_frame( io::COM_ports::watch_t& watch_ ) {
-        bool rescan = ImGui::Button( "Scan for COM ports" );
+    status_t bind( HVec< io::COM_ports > ports_ ) {
+        _ports = std::move( ports_ );
+
+    //# The registered hotplug callback lambda function is invoked under a dispenser control, 
+    //#   therefore there is no need to worry about races over the container.
+        _ports->register_hotplug_callback( RGH_TXTUUID_FROM_THIS, [ this ] ( io::COM_ports::container_t& ports_ ) -> void {
+            auto itr = std::ranges::find_if( ports_, [ this ] ( const io::COM_port_t& port_ ) -> bool {
+                return port_.id == _sel_id;
+            } );
+            RGH_ASSERT_OR( ports_.end() != itr ) {
+                _sel    = -0x1;
+                _sel_id = "";
+                return;
+            }
+
+            _sel = std::distance( ports_.begin(), itr );
+        } ); 
+
+        return OK;
+    }
+
+    std::tuple< const io::COM_port_t*, bool, bool > imm_frame( 
+        IN   io::COM_ports::watch_t&   watch_,
+        IN   const char*               scan_btn_lbl_   = "Scan for COM ports",
+        IN   const char*               no_ports_lbl_   = "No COM ports found."
+    ) {
+        bool rescan = ImGui::Button( scan_btn_lbl_ );
 
         auto& ports = *watch_;
 
@@ -89,32 +101,25 @@ public:
             }
         } else {
             ImGui::Separator();
-            ImGui::BulletText( "No COM ports found." );
+            ImGui::BulletText( no_ports_lbl_ );
             ImGui::Separator();
         }
         
         if( _sel >= 0x0 && _sel < ports.size() ) return { &ports[ _sel ], sel_now, rescan }; 
 
+        this->unselect();
+        return { nullptr, false, rescan };
+    }
+
+    void unselect( void ) {
         _sel    = -0x1;
         _sel_id = "";
-        return { nullptr, false, rescan };
     }
 
 public:
     RGH_inline io::COM_ports* operator -> ( void ) { return _ports.get(); }
 
 };
-
-
-bool small_X_button( void ) {
-    ImGui::PushStyleColor( ImGuiCol_Button,        ImVec4{ 0,0,0,0 } );
-    ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4{ 0,0,0,0 } );
-    ImGui::PushStyleColor( ImGuiCol_ButtonActive,  ImVec4{ 0,0,0,0 } );
-    ImGui::PushStyleColor( ImGuiCol_Text,          ImVec4{ 1,0,0,1 } );
-    const bool pressed = ImGui::SmallButton( "X" );
-    ImGui::PopStyleColor( 4 );
-    return pressed;
-}
 
 
 };

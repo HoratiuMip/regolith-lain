@@ -16,9 +16,16 @@ struct COM_port_t {
     std::string   detail;
 };
 
+#define COM_PORT_FILTER_ int
+enum _COM_PORT_FILTER_enum : int {
+    COM_PORT_FILTER_CDC   = BV( 0x0 ),
+    COM_PORT_FILTER_VIDEO = BV( 0x1 )
+};
+
 struct COM_ports_config_t {
-    bool   allow_hotplug_callback_overwrite   = false;
-    bool   clear_container_on_failed_scan     = true;
+    COM_PORT_FILTER_   filter                             = COM_PORT_FILTER_CDC;
+    bool               allow_hotplug_callback_overwrite   = false;
+    bool               clear_container_on_failed_scan     = true;
 };
 
 struct COM_ports_init_args_t {
@@ -54,7 +61,7 @@ public:
     /**
      * @brief: Rescan the existing COM ports and push them in the underlying container.
      */
-    COM_ports& scan( void );
+    COM_ports& scan();
 
 public:
     /**

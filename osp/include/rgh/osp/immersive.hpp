@@ -307,14 +307,14 @@ public:
         
     #define _ADD_UN_STRUCT( struct_, fields_ ) struct struct_##_t{ fields_ }; payload_t( Verb_ verb_, struct_##_t st_ ) : verb{ verb_ }, struct_{ std::move( st_ ) } {}
         _ADD_UN_STRUCT( tex_upld,  
-            HVec< imm::Tex >     invk   = nullptr;
+            HVec< imm::Tex >     ref    = nullptr;
             HVec< byte_t >       pxls   = nullptr;
             int                  w      = 0;
             int                  h      = 0;
             imm::Tex::params_t   prms   = {};
         )
         _ADD_UN_STRUCT( tex_reld, 
-            HVec< imm::Tex >     invk   = nullptr;
+            HVec< imm::Tex >     ref    = nullptr;
             HVec< byte_t >       pxls   = nullptr;
             int                  w      = 0;
             int                  h      = 0;
@@ -374,12 +374,12 @@ _RGH_PROTECTED:
             case payload_t::Verb_TexUpld: {
                 auto& noun = payload.tex_upld;
 
-                noun.invk->upld( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() }, noun.prms );
+                noun.ref->upld( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() }, noun.prms );
                 break; }
             case payload_t::Verb_TexReld: {
                 auto& noun = payload.tex_reld;
 
-                noun.invk->reld( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() } );
+                noun.ref->reld( { .width = noun.w, .height = noun.h, .pixels = ( unsigned char* )noun.pxls.get() } );
                 break; }
         }
     }
@@ -419,6 +419,8 @@ public:
     } imgui;
 
 public:
+    RGH_inline static auto& io( void ) { return ImGui::GetIO(); }
+
     RGH_inline static void movx( float dx_ ) { ImGui::SetCursorPosX( ImGui::GetCursorPosX() + dx_ ); }
     RGH_inline static void movy( float dy_ ) { ImGui::SetCursorPosY( ImGui::GetCursorPosY() + dy_ ); }
     RGH_inline static void movxy( float dx_, float dy_ ) { movx( dx_ ); movy( dy_ ); }
@@ -434,7 +436,7 @@ public:
     RGH_inline static auto chpt_dx( void ) { return cursor().x - _chpt_cursor.x; }
     RGH_inline static auto chpt_dy( void ) { return cursor().y - _chpt_cursor.y; }
 
-    RGH_inline static void scale_font( float scl_ ) { ImGui::SetWindowFontScale( scl_ ); }
+    RGH_inline static void scale_font( float scl_ = 1.0f ) { ImGui::SetWindowFontScale( scl_ ); }
 
     RGH_inline static void scaled_text( float scl_, const char* fmt_, ... ) {
         auto prev_scl = ImGui::GetCurrentWindow()->FontWindowScale;

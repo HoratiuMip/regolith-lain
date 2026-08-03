@@ -15,7 +15,7 @@
 
 namespace rgh::io {
 
-static status_t _populate_ports( COM_ports::container_t& ports_ ) {
+static status_t _populate_ports( COM_ports::container_t& ports_, COM_PORT_FILTER_ filter_ ) {
     ports_.clear();
 
 #ifdef RGH_TARGET_OS_WINDOWS
@@ -55,7 +55,8 @@ static status_t _populate_ports( COM_ports::container_t& ports_ ) {
         return RGH_ERR_SYSCALL;
     }
 
-    udev_enumerate_add_match_subsystem( enumerate, "tty" );
+    if( filter_ & COM_PORT_FILTER_CDC ) udev_enumerate_add_match_subsystem( enumerate, "tty" );
+    if( filter_ & COM_PORT_FILTER_VIDEO ) udev_enumerate_add_match_subsystem( enumerate, "video4linux" );
     udev_enumerate_scan_devices( enumerate );
 
     udev_list_entry* devices = udev_enumerate_get_list_entry( enumerate );
@@ -70,7 +71,7 @@ static status_t _populate_ports( COM_ports::container_t& ports_ ) {
 
         udev_device* parent = udev_device_get_parent( dev ); RGH_ASSERT_OR( parent ) continue;
         const char* dev_node = udev_device_get_devnode( dev ); RGH_ASSERT_OR( dev_node ) continue;
-
+        
         std::string dev_path = { dev_node };
         RGH_ASSERT_OR( dev_path.find( "ttyS" ) == std::string::npos ) continue;
 
@@ -93,9 +94,14 @@ static status_t _populate_ports( COM_ports::container_t& ports_ ) {
         const char* vid  = udev_device_get_property_value( dev, "ID_VENDOR_ID" ) ?: RGH_NA;
         const char* mid  = udev_device_get_property_value( dev, "ID_MODEL_ID" ) ?: RGH_NA;
  
+        std::string detail = std::format( "{} - {} - ({}:{})", mdl, ven, mid, vid );
+        RGH_ASSERT_OR( ports_.end() == std::ranges::find_if( ports_, [ &detail ] ( const COM_port_t& port_ ) -> bool {
+            return port_.detail == detail;
+        } ) ) continue;
+
         ports_.emplace_back( COM_port_t{
             .id = std::move( dev_path ),
-            .detail = std::format( "{} - {} - ({}:{})", mdl, ven, mid, vid )
+            .detail = std::move( detail )
         } );
     }
 
@@ -132,7 +138,7 @@ static DWORD CALLBACK _listen_callback (
 
 RGH_IMPL_FNC COM_ports& COM_ports::scan( void ) {
     auto     ports  = this->control();
-    status_t status = _populate_ports( *ports );
+    status_t status = _populate_ports( *ports, _config.filter );
 
     RGH_ASSERT_OR( RGH_OK == status ) {
         if( _config.clear_container_on_failed_scan ) { ports->clear(); goto l_fail_no_err; }

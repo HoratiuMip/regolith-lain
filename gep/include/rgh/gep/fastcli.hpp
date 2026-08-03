@@ -7,6 +7,7 @@
  */
 
 #include <rgh/gep/core.hpp>
+#include <rgh/gep/text_utils.hpp>
 
 namespace rgh {
 
