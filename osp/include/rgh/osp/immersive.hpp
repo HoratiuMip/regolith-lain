@@ -431,6 +431,7 @@ public:
 
     RGH_inline static auto cursor( void ) { return ImGui::GetCursorPos(); }
     RGH_inline static auto here( void ) { return ImGui::GetCursorPos(); }
+    RGH_inline static auto ms_in_item( void ) { return ImGui::GetMousePos() - ImGui::GetItemRectMin(); }
 
     inline static ImVec2   _chpt_cursor   = {};
     RGH_inline static auto chpt_get( void ) { return _chpt_cursor; }
