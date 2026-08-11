@@ -1,3 +1,9 @@
+#pragma once /*
+# FILE: ucp/core.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+*/
 #include <rgh/brp/descriptor.hpp>
 
 #include <Arduino.h>
@@ -37,17 +43,27 @@ template< pin_t Pin_, lvl_t NLvl_ > struct input_cc_t {
     bool   actv   = false;
     bool   rise   = false;
     bool   fall   = false;
+    bool   _riL   = false;
+    bool   _faL   = false;
 
     void tick( void ) {
         bool read = (digitalRead( Pin_ ) == NLvl_);
+
         if( read != actv ) {
             rise = read;
             fall = !read;
         } else {
             rise = fall = false;
         }
+
+        _riL |= rise;
+        _faL |= fall;
+    
         actv = read;
     }
+
+    bool rise_latched( void ) { const bool l = _riL; _riL = false; return l; }
+    bool fall_latched( void ) { const bool l = _faL; _faL = false; return l; }
 
     operator bool( void ) const { return actv; }
 };
@@ -62,9 +78,10 @@ template< pin_t Pin_, lvl_t NLvl_ > struct timed_output_ccv_t {
 
     void set_timeout_ms( ms_t to_ms_ ) { _to_ms = to_ms_; }
     ms_t elapsed_ms( RGH_INO_NOW_MS_ARG ) { return (now_ms_ - _prev_w_ms); }
-    bool expired( RGH_INO_NOW_MS_ARG ) { return this->elapsed_ms() >= _to_ms; }
+    bool expired( RGH_INO_NOW_MS_ARG ) { return this->elapsed_ms( now_ms_ ) >= _to_ms; }
     ms_t remaining_ms( RGH_INO_NOW_MS_ARG ) { return this->expired( now_ms_ ) ? 0 : (_to_ms - (now_ms_ - _prev_w_ms)); }
     lvl_t lvl( void ) { return _lvl; }
+    bool active( void ) { return _lvl != NLvl_; }
 
     void set( RGH_INO_NOW_MS_ARG ) {
         _prev_w_ms = now_ms_;
@@ -74,19 +91,19 @@ template< pin_t Pin_, lvl_t NLvl_ > struct timed_output_ccv_t {
         this->set_timeout_ms( to_ms_ );
         this->set( now_ms_ );
     }
-    void set_once( RGH_INO_NOW_MS_ARG ) {
-        RGH_ASSERT_OR( _lvl == NLvl_ ) return;
-        this->set( now_ms_ );
+    bool set_once( RGH_INO_NOW_MS_ARG ) {
+        RGH_ASSERT_OR( !this->active() ) return false;
+        this->set( now_ms_ ); return true;
     }
     void reset( void ) {
         pin_write( _lvl = NLvl_, Pin_ );
     }
-    void force( RGH_INO_NOW_MS_ARG ) {
+    void shadow_set( RGH_INO_NOW_MS_ARG ) {
         _prev_w_ms = now_ms_;
     }
       
     void tick( RGH_INO_NOW_MS_ARG ) {
-        RGH_ASSERT_AND( _to_ms == 0 || now_ms_ - _prev_w_ms < _to_ms ) return;
+        RGH_ASSERT_AND( _to_ms == 0 || !this->expired( now_ms_ ) ) return;
         this->reset();
     }
 

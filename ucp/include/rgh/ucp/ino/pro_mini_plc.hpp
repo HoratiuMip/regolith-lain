@@ -1,3 +1,9 @@
+#pragma once /*
+# FILE: ucp/pro_mini_plc.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+*/
 #include "core.hpp"
 
 namespace rgh::ino {
@@ -56,10 +62,10 @@ public:
     } relay;
 
     struct button_t {
-        input_cc_t< _Pin_BTN_1, LOW >   one     = {};
-        input_cc_t< _Pin_BTN_2, LOW >   two     = {};
-        input_cc_t< _Pin_BTN_3, LOW >   three   = {};
-        input_cc_t< _Pin_BTN_4, LOW >   four    = {};
+        input_cc_t< _Pin_BTN_1, LOW >   one     = { INPUT };
+        input_cc_t< _Pin_BTN_2, LOW >   two     = { INPUT };
+        input_cc_t< _Pin_BTN_3, LOW >   three   = { INPUT };
+        input_cc_t< _Pin_BTN_4, LOW >   four    = { INPUT };
 
         void tick( void ) {
             one.tick(); two.tick(); three.tick(); four.tick();
@@ -82,23 +88,35 @@ public:
         relay.tick( now_ms_ );
         button.tick();
         input.tick();
-        _seg7_disp_tick();
+        _seg7_disp_tick( now_ms_ );
     }
 
 #pragma region 7 SEGMENT DISPLAY 
 _RGH_PROTECTED:
     inline static const uint8_t   _DISP_SEGS[]   = { 0xc0,0xf9,0xa4,0xb0,0x99,0x92,0x82,0xf8,0x80,0x90,0x88,0x83,0xc6,
                                                      0xa7,0xa1,0x86,0x8e,0x89,0x8b,0xc7,0xab,0xc8,0xa3,0x8c, 0b10001100,0x87,
-                                                     0xc1,0xbf, 0b10010010, 0xff };
+                                                     0xc1,0xbf, 0b10010010, 0xff, 0b11110110 };
     inline static const uint8_t   _DISP_POS[]    = { 0b0001, 0b0010, 0b0100, 0b1000 };
 
-    uint8_t   _disp_pos                         = 0x0;
+    uint8_t   _disp_pos                          = 0x0;
     uint8_t   _disp_buf[ sizeof( _DISP_POS ) ]   = { 0xff, 0xff, 0xff, 0xff };
 
-    void _seg7_disp_tick( void ) {
+    void _seg7_disp_tick( INO_NOW_MS_ARG ) {
+        uint8_t seg = 0b11111111;
+        if( _disp_pos == 3 ) {
+            if( input.one )   seg &= 0b11111101;
+            if( input.two )   seg &= 0b11111011;
+            if( input.three ) seg &= 0b11101111;
+            if( input.four )  seg &= 0b11011111;
+
+            seg &= (now_ms_ % 1000 < 500 ? _DISP_SEGS[27] : _DISP_SEGS[30]);
+        } else {
+            seg = _DISP_SEGS[ _disp_buf[ _disp_pos ] ];
+        }
+
         digitalWrite( _Pin_LATCH, LOW );
         shiftOut( _Pin_DATA, _Pin_CLOCK, MSBFIRST, _DISP_POS[ _disp_pos ] );
-        shiftOut( _Pin_DATA, _Pin_CLOCK, MSBFIRST, _DISP_SEGS[ _disp_buf[ _disp_pos ] ] );
+        shiftOut( _Pin_DATA, _Pin_CLOCK, MSBFIRST, seg );
         digitalWrite( _Pin_LATCH, HIGH );
 
         if( ++_disp_pos >= sizeof( _DISP_POS ) ) _disp_pos = 0;
@@ -108,16 +126,17 @@ public:
 //# 10 = A, b, C, c, d, 
 //# 15 = E, F, H, h, L, 
 //# 20 = n, N, o, P, r, 
-//# 25 = t, U, -, S, ' '
+//# 25 = t, U, -, S, ' ',
+//# 30 = =
     void seg7_write( 
-        RGH_IN   uint8_t d1_, uint8_t d2_, uint8_t d3_, uint8_t d4_ 
+        RGH_IN   uint8_t d1_, uint8_t d2_, uint8_t d3_
     ) {
-        _disp_buf[ 0x0 ] = d1_; _disp_buf[ 0x1 ] = d2_; _disp_buf[ 0x2 ] = d3_; _disp_buf[ 0x3 ] = d4_;
+        _disp_buf[ 0x0 ] = d1_; _disp_buf[ 0x1 ] = d2_; _disp_buf[ 0x2 ] = d3_;;
     }
     void seg7_write( 
         RGH_IN   int16_t num_ 
     ) {
-        seg7_write( num_/1000%10, num_/100%10, num_/10%10, num_%10 );
+        seg7_write( num_/100%10, num_/10%10, num_%10 );
     }
 #pragma endregion 7 SEGMENT DISPLAY 
 

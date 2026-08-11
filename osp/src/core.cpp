@@ -9,10 +9,10 @@
 
 namespace rgh {
 
-bridge_t BridgE{ RGH_VERSION_STRING };
+bridge_t BridgE{ "rgh" };
 
 RGH_IMPL_FNC status_t _INTERNAL::init( int argc_, char* argv_[], const init_args_t& args_ ) {    
-    RGH_LOGI( "Hello there from RGH, version {}.{}.{}. Initializing ...", RGH_VERSION_MAJOR, RGH_VERSION_MINOR, RGH_VERSION_PATCH );
+    RGH_BRDG_LOGI( "Hello there from RGH, version {}.{}.{}. Initializing ...", RGH_VERSION_MAJOR, RGH_VERSION_MINOR, RGH_VERSION_PATCH );
 
     int warn_count = 0x0;
 
@@ -29,14 +29,14 @@ RGH_IMPL_FNC status_t _INTERNAL::init( int argc_, char* argv_[], const init_args
 
     #endif
 
-        RGH_LOGI( "Initialization of input/output sockets completed." ); 
+        RGH_BRDG_LOGI( "Initialization of input/output sockets completed." ); 
         goto l_end;
     l_bad_end:
         RGH_LOGW( "Flawed initialization of input/output sockets." );
     l_end:
     }
 
-    if( 0x0 == warn_count ) RGH_LOGI( "Initialization of the operating system plate completed flawlessly." );
+    if( 0x0 == warn_count ) RGH_BRDG_LOGI( "Initialization of the operating system plate completed flawlessly." );
     else RGH_LOGW( "Initialization of the operating system plate completed with {} warnings.", warn_count );
     return 0x0;
 }

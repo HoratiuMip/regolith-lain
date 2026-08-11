@@ -128,7 +128,7 @@ public:
         template< typename _T_cvt_ > bool _cvt_opt_arg( void* where_ ) {
             if constexpr( std::is_same_v< _T_cvt_, int32_t > ) {
                 char* endptr = const_cast< char* >( _ctx->arg_tok->c_str() );
-                *(int32_t*)where_ = (int32_t)strtol( endptr, &endptr, 10 );
+                *(int32_t*)where_ = (int32_t)strtol( endptr, &endptr, 0 );
                 return endptr == &*_ctx->arg_tok->end();
             } else
             if constexpr( std::is_same_v< _T_cvt_, float > ) {
@@ -348,7 +348,7 @@ _RGH_PROTECTED:
         } );
         RGH_ASSERT_OR( itr != _cmd_map.end() ) {
             *ctx_->out += std::format( "fast-cli: unknown command \"{}\".\n", ctx_->toks[ 0x0 ] );
-            return RGH_ERR_BADARG;
+            return RGH_ERR_NOT_FOUND;
         }
 
         ctx_->cmd = &*itr;

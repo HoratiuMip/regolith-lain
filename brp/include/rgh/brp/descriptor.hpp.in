@@ -154,6 +154,8 @@ inline static const char* const _status_msgs[] = {
     #define ERR_PARTIAL      -0x15
     #define ERR_CORRUPTED    -0x16
     #define ERR_CALLSITE     -0x17
+
+    #define STATUS_MSG(c) RGH_STATUS_MSG(c)
 #endif
 
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}

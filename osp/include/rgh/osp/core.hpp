@@ -165,13 +165,27 @@ public:
         RGH_IN   const std::string&   logger_name_ 
     ) {
         logger = spdlog::stdout_color_mt( logger_name_ ); 
-        logger->set_pattern( RGH_SPDLOG_PATTERN );
+        logger->set_pattern( RGH_SPDLOG_PATTERN ); 
     }
 
 public:
     HVec< spdlog::logger >   logger   = nullptr;
 
 public:
+    status_t resink_logger( 
+        RGH_IN   spdlog::sink_ptr   sink_ 
+    ) {
+        spdlog::drop( logger->name() );
+
+        logger = std::make_shared< spdlog::logger >( logger->name(), std::move( sink_ ) );
+        logger->set_pattern( RGH_SPDLOG_PATTERN );
+        
+        return RGH_OK;
+    }
+    spdlog::sink_ptr get_logger_sink( void ) {
+        return logger->sinks().front();
+    }
+
     RGH_inline spdlog::logger* operator -> ( void ) noexcept { return logger.get(); }
 };
 extern bridge_t BridgE;

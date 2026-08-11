@@ -1,10 +1,9 @@
-#pragma once
-/**
- * @file: brp/wjp_euclid.hpp
- * @brief:
- * @details
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
+#pragma once /*
+# FILE: brp/wjp_euclid.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+*/
 
 #include <rgh/brp/descriptor.hpp>
 #include <rgh/brp/IO_port.hpp>
@@ -61,12 +60,12 @@ public:
             ++bytes_; --len_;
         }
 
-        int copy_len = _state.trg_sz - _state.crt_sz;
-        const bool pck_end = len_ > copy_len;
-
-        memcpy( &_buffer[ _state.crt_sz ], bytes_, copy_len );
+        const int  copy_len = _state.trg_sz - _state.crt_sz;
+        const bool pck_end  = len_ > copy_len;
         
         if( pck_end ) {
+            memcpy( &_buffer[ _state.crt_sz ], bytes_, copy_len );
+
             RGH_ASSERT_OR( crc8_smbus( &_mrk, _state.trg_sz + 1 ) == bytes_[ copy_len ] ) {
                 return RGH_ERR_CORRUPTED;
             }
@@ -81,6 +80,9 @@ public:
                 bytes_ += shift;
                 goto l_begin;
             }
+        } else {
+            memcpy( &_buffer[ _state.crt_sz ], bytes_, len_ );
+            _state.crt_sz += len_;
         }
 
         return RGH_OK;
