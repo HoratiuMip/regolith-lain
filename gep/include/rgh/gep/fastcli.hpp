@@ -1,12 +1,22 @@
-#pragma once
-/**
- * @file: osp/fastcli.hpp
- * @brief: 
- * @details
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
-
+#pragma once /*
+# FILE: gep/fastcli.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# CAUTION:
+#   The Fast_cli structure is NOT thread-safe because every method would be under a lock, which would create 
+#     complications. Therefore, when you require a thread-safe version, wrap it in a Dispenser or such.
+#
+# ENHANCEMENTS:
+#   [K] Check whether to implement the command map as an actual map or a sorted vector.
+#   [K] Add functions that can push and pop commands dynamically from the command map.
+#   [K] Implement command manuals.
+#   [ ] Remake the parsing system such that there exists an entry point for already split tokens,
+#         with the posibillity to call the parser with either a range or a single string.
+*/
 #include <rgh/gep/core.hpp>
+#include <rgh/gep/dispenser.hpp>
 #include <rgh/gep/text_utils.hpp>
 
 namespace rgh {
@@ -20,27 +30,25 @@ public:
     struct cmd_t;
 
 _RGH_PROTECTED:
-    /**
-     * @brief Used across internal functions while parsing a command.
-     */
+//# Parsing context.
     struct _parse_ctx_t {
-        /* The whole command line. */
+    //# The whole command line.
         const std::string&           text      = {};
-        /* Final accumulated output of the command line execution. */
+    //# Final accumulated output of the command line execution.
         std::string*                 out       = nullptr;
-        /* Tokens extracted from 'text'. */
+    //# Tokens extracted from 'text'.
         std::vector< std::string >   toks      = {};
-        /* Reference to effective command structure. */
+    //# Reference to effective command structure.
         const cmd_t*                 cmd       = nullptr;
-        /* Context-wise index 0. Multiple uses. */
+    //# Context-wise index 0. Multiple uses.
         int                          id0       = 0x0;
-        /* Current token during splitting 'text'. */
+    //# Current token during splitting 'text'.
         std::string                  crt_tok   = "";
-        /* Flag if we are inside quotes while tokening. */
+    //# Flag if we are inside quotes while tokening.
         bool                         in_qte    = false;
-        /* Reference to effective option token. */
+    //# Reference to effective option token.
         const std::string*           opt_tok   = nullptr;
-        /* Reference to effective option argument token. */
+    //# Reference to effective option argument token.
         const std::string*           arg_tok   = nullptr; 
 
         bool push_crt_tok( void ) {
@@ -50,42 +58,41 @@ _RGH_PROTECTED:
     };
 
 public:
-    /**
-     * @brief Master configuration of the parser.
-     */
+//# Master configuration of the parser.
     struct config_t {
-        std::string   delim_chrs  = " \t\n";
-        std::string   xtra_chrs   = ".,_*/+-?!:=~()[]^";
-        std::string   esc_chrs    = "\\";
-        std::string   qte_chrs    = "\"\'";
-        std::string   var_chrs    = "$";
+    //# WHen this is not NULL, it is called back when "man <command>" is parsed.
+        std::function< void( std::string_view, std::string_view ) >   when_man   = nullptr;
+
+    //# Use std::string to take advantage of SSO.
+        std::string   delim_chrs    = " \t\n";
+        std::string   xtra_chrs     = ".,_*/+-?!:=~()[]^";
+        std::string   esc_chrs      = "\\";
+        std::string   qte_chrs      = "\"\'";
+        std::string   var_chrs      = "$";
     };
     
-    enum Arg_ {
-        Arg_flag,
-        Arg_text, Arg_lmhi = Arg_text,
-        Arg_i32, Arg_f32, Arg_f64
+    enum argtype_e {
+        argflag,
+        argtext, arglmhi = argtext,
+        argi32, argf32, argf64
     };
-    enum Argc_ {
-        Argc_single, Argc_multi_compact
+    enum argcollect_e {
+        argcsingle, argcmulticompact
     };
-    /**
-     * @brief Command option.
-     * @details (1): --some-opt (2): --some-opt-w-arg 69 (3): -s (4): -S 69
-     *          An option that does not start with neither '-' or '--', is considered the nth option (using fast index).
-     */
+/*
+# DETAILS: Command option.
+#            Examples: (1): --some-opt (2): --some-opt-w-arg 69 (3): -s (4): -S 69
+#          An option that does not start with neither '-' nor '--', is considered the nth option (using fast index).
+*/
     struct opt_t {
-        char          sh0rt     = '\0';
-        std::string   l0ng      = {};
-        Arg_          arg       = Arg_flag;
-        int           fast_id   = -0x1;
-        Argc_         argc      = Argc_single;
+        char           sh0rt     = '\0';
+        std::string    l0ng      = {};
+        argtype_e      arg       = argflag;
+        int            fast_id   = -0x1;
+        argcollect_e   argc      = argcsingle;
     };
 
-    /**
-     * @brief Structure passed to the user parse callback.
-     * @details Usage is intended to be as close as possible to getopt_long().
-     */
+//# Structure passed to the user parse callback. Usage is intended to be as close as possible to getopt_long().
     struct stencil_t {
         _parse_ctx_t*   _ctx   = nullptr;
         int             _fid   = 0x0;
@@ -108,9 +115,11 @@ public:
         [[deprecated]]RGH_inline auto& arg_f64v( void )  { return *(std::vector< double >*)_arg; }
 
         RGH_inline auto& text( void ) { return *(const std::string*)_arg; }
-        RGH_inline auto  i32( void )  { return *(int32_t*)_arg; }
-        RGH_inline auto  f32( void )  { return *(float*)_arg; }
-        RGH_inline auto  f64( void )  { return *(double*)_arg; }
+        RGH_inline auto str( void ) { return std::move( *reinterpret_cast< std::string* >( _arg ) ); }
+        RGH_inline auto c_str( void ) { return reinterpret_cast< std::string* >( _arg )->c_str(); }
+        RGH_inline auto i32( void )  { return *(int32_t*)_arg; }
+        RGH_inline auto f32( void )  { return *(float*)_arg; }
+        RGH_inline auto f64( void )  { return *(double*)_arg; }
 
         RGH_inline auto& textv( void ) { return *(std::vector< const std::string* >*)_arg; }
         RGH_inline auto& i32v( void )  { return *(std::vector< int32_t >*)_arg; }
@@ -144,22 +153,22 @@ public:
             return false;
         }
 
-        bool _cvt_opt_arg_single( Arg_ arg_ ) {
+        bool _cvt_opt_arg_single( argtype_e arg_ ) {
             const char* bad_cvt = nullptr;
 
             switch( arg_ ) {
-                case Arg_text: {
+                case argtext: {
                     _arg = (void*)_ctx->arg_tok;
                 break; }
-                case Arg_i32: {
+                case argi32: {
                     _arg = (void*)_arg_mem;
                     RGH_ASSERT_OR( _cvt_opt_arg< int32_t >( _arg ) ) bad_cvt = "i32";
                 break; }
-                case Arg_f32: {
+                case argf32: {
                     _arg = (void*)_arg_mem;
                     RGH_ASSERT_OR( _cvt_opt_arg< float >( _arg ) ) bad_cvt = "f32";
                 break; }
-                case Arg_f64: {
+                case argf64: {
                     _arg = (void*)_arg_mem;
                     RGH_ASSERT_OR( _cvt_opt_arg< double >( _arg ) ) bad_cvt = "f64";
                 break; }
@@ -172,32 +181,32 @@ public:
             return true;
         }
 
-        void _cvt_opt_arg_multi_compact_init( Arg_ arg_ ) {
+        void _cvt_opt_arg_multi_compact_init( argtype_e arg_ ) {
             _arg = (void*)_arg_mem;
             switch( arg_ ) {
-                case Arg_text: { new (_arg) std::vector< const std::string* >{}; break; }
-                case Arg_i32: { new (_arg) std::vector< int32_t >{}; break; }
-                case Arg_f32: { new (_arg) std::vector< float >{}; break; }
-                case Arg_f64: { new (_arg) std::vector< double >{}; break; }
+                case argtext: { new (_arg) std::vector< const std::string* >{}; break; }
+                case argi32: { new (_arg) std::vector< int32_t >{}; break; }
+                case argf32: { new (_arg) std::vector< float >{}; break; }
+                case argf64: { new (_arg) std::vector< double >{}; break; }
             }
         }
 
-        bool _cvt_opt_arg_multi_compact( Arg_ arg_ ) {
+        bool _cvt_opt_arg_multi_compact( argtype_e arg_ ) {
             switch( arg_ ) {
-                case Arg_text: {
+                case argtext: {
                     textv().emplace_back( _ctx->arg_tok );
                 break; }
-                case Arg_i32: {
+                case argi32: {
                     int32_t cvt = 0x0;
                     RGH_ASSERT_OR( _cvt_opt_arg< int32_t >( &cvt ) ) return false;
                     i32v().emplace_back( cvt );
                 break; }
-                case Arg_f32: {
+                case argf32: {
                     float cvt = 0x0;
                     RGH_ASSERT_OR( _cvt_opt_arg< float >( &cvt ) ) return false;
                     f32v().emplace_back( cvt );
                 break; }
-                case Arg_f64: {
+                case argf64: {
                     double cvt = 0x0;
                     RGH_ASSERT_OR( _cvt_opt_arg< double >( &cvt ) ) return false;
                     f64v().emplace_back( cvt );
@@ -208,13 +217,10 @@ public:
     };
 
     using cmd_fnc_t = std::function< status_t( stencil_t& ) >;
-
-    /**
-     * @brief Command definition: name, options, callback, etc.
-     */
     struct cmd_t {
         std::string            text   = {};
         std::vector< opt_t >   opts   = {};
+        std::string_view       man    = "No manual provided for this command.";
         cmd_fnc_t              fnc    = nullptr;
 
         const opt_t* opt_by_short( char short_ ) const {
@@ -235,6 +241,12 @@ public:
             } );
             return itr != opts.end() ? &*itr : nullptr;
         }
+    
+        std::strong_ordering operator <=> ( const cmd_t& rhs_ ) const { return text <=> rhs_.text; }
+        bool operator == ( const cmd_t& rhs_ ) const { return text == rhs_.text; }
+
+        std::strong_ordering operator <=> ( std::string_view rhs_ ) const { return text <=> rhs_; }
+        bool operator == ( std::string_view rhs_ ) const { return text == rhs_; }
     };
 
     using cmd_map_t = std::vector< cmd_t >;
@@ -243,21 +255,63 @@ public:
     Fast_cli( void ) = default;
 
     Fast_cli( const config_t& config_, const cmd_map_t& cmd_map_ ) 
-    : _config{ config_ }, _cmd_map{ cmd_map_ }
-    {}
+    : _config{ config_ }, _cmd_map{ cmd_map_ } 
+    {
+        this->_prepare();
+    }
 
 _RGH_PROTECTED:
-    config_t            _config        = {};
-    cmd_map_t           _cmd_map       = {};
-    std::shared_mutex   _cmd_map_mtx   = {};
+    config_t    _config    = {};
+    cmd_map_t   _cmd_map   = {};
+
+_RGH_PROTECTED:
+//# Prepare the cli based on the current config and command map.
+    void _prepare( void ) {
+        if( _config.when_man ) {
+            this->push_cmd( {
+                .text = "man",
+                .opts = { { .sh0rt = 'c', .l0ng = "command", .arg = argtext, .fast_id = 0x0 } },
+                .man  = "MAN-CEPTION!!!",
+                .fnc  = [ this ] ( auto& C_ ) -> status_t {
+                    RGH_ASSERT_OR( _config.when_man ) return RGH_ERR_CORRUPTED;
+
+                    std::string cmd = {};
+
+                    RGH_FASTCLI_OPT_SWITCH_BEGIN(C_)
+                        case 'c': cmd = C_.str(); break;
+                    RGH_FASTCLI_OPT_SWITCH_END
+
+                    auto itr = std::ranges::find( _cmd_map, cmd, &cmd_t::text );
+                    RGH_ASSERT_OR( itr != _cmd_map.end() ) return RGH_ERR_NOT_FOUND;
+
+                    this->_config.when_man( itr->text, itr->man );
+                    return RGH_OK;
+                }
+            } );
+        }
+
+        std::ranges::sort( _cmd_map );
+    }
 
 public:
+//# Bind a new config and command map.
     status_t bind( const config_t& config_, const cmd_map_t& cmd_map_ ) {
         _config  = config_;
-        
-        std::lock_guard lck{ _cmd_map_mtx };
         _cmd_map = cmd_map_;
-
+        this->_prepare();
+        return RGH_OK;
+    }
+//# Add a command to the command map.
+    status_t push_cmd( const cmd_t& cmd_ ) {
+        auto itr = std::ranges::lower_bound( _cmd_map, cmd_ );
+        _cmd_map.insert( itr, cmd_ );
+        return RGH_OK;
+    }
+//# Erase a command from the command map.
+    status_t pop_cmd( std::string_view text_ ) {
+        auto itr = std::ranges::find( _cmd_map, text_, &cmd_t::text );
+        RGH_ASSERT_OR( itr != _cmd_map.end() ) return RGH_ERR_NOT_FOUND;
+        _cmd_map.erase( itr );
         return RGH_OK;
     }
 
@@ -277,8 +331,6 @@ _RGH_PROTECTED:
     RGH_inline bool _is_qte_chr( const char c_ ) const {
         return _config.qte_chrs.find( c_, 0x0 ) != std::string::npos;
     }
-
-
 
 _RGH_PROTECTED:
     status_t _resolve_esc_chr( _parse_ctx_t* ctx_ ) {
@@ -343,10 +395,8 @@ _RGH_PROTECTED:
     }
 
     status_t _consume_toks( _parse_ctx_t* ctx_ ) {
-        auto itr = std::ranges::find_if( _cmd_map, [ ctx_ ] ( const cmd_t& cmd_ ) -> bool {
-            return ctx_->toks[ 0x0 ] == cmd_.text; 
-        } );
-        RGH_ASSERT_OR( itr != _cmd_map.end() ) {
+        auto itr = std::ranges::lower_bound( _cmd_map, ctx_->toks[ 0x0 ], {}, &cmd_t::text );
+        RGH_ASSERT_OR( itr != _cmd_map.end() && itr->text == ctx_->toks[ 0x0 ] ) {
             *ctx_->out += std::format( "fast-cli: unknown command \"{}\".\n", ctx_->toks[ 0x0 ] );
             return RGH_ERR_NOT_FOUND;
         }
@@ -374,7 +424,6 @@ public:
             *out_ += "fast-cli: nothing to do."; return RGH_ERR_BADARG;
         }
 
-        std::shared_lock lck{ _cmd_map_mtx };
         return _consume_toks( &ctx );
     }
 
@@ -411,7 +460,7 @@ inline char Fast_cli::stencil_t::next( void ) {
         _RET_ERR;
     }
     ++_ctx->id0;
-    if( opt->arg != Arg_flag ) { RGH_ASSERT_OR( _ctx->id0 < _ctx->toks.size() ) {
+    if( opt->arg != argflag ) { RGH_ASSERT_OR( _ctx->id0 < _ctx->toks.size() ) {
         *_ctx->out += std::format( "fast-cli: missing argument(s) for option \"{}\".\n", opt_tok );
         _RET_ERR;
     } } else {
@@ -422,11 +471,11 @@ l_fast_skip:
     _ctx->arg_tok = &_ctx->toks[ _ctx->id0++ ];
 
     switch( opt->argc ) {
-        case Argc_single: {
+        case argcsingle: {
             RGH_ASSERT_OR( _cvt_opt_arg_single( opt->arg ) ) _RET_ERR;
         break; }
 
-        case Argc_multi_compact: {
+        case argcmulticompact: {
             _cvt_opt_arg_multi_compact_init( opt->arg );
             bool once = false;
             while( _cvt_opt_arg_multi_compact( opt->arg ) ) {

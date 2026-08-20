@@ -10,11 +10,14 @@
 #            than a classic lock and prevent blocking other threads when not necessary.
 #
 # MODES:
-#   > LOCK - Watch: lock shared | Control: lock unique.
-#   > TRYLOCK - Wach: try lock shared | Control: lock unique.
-#   > DROP - Watch: load pointer | Control: alloc and store pointer.
+#   LOCK - Watch: lock shared | Control: lock unique.
+#   TRYLOCK - Wach: try lock shared | Control: lock unique.
+#   DROP - Watch: load pointer | Control: alloc and store pointer.
 #
 # CAUTION: Other modes are under redisign, as is the whole dispenser thing. Do not use them yet.
+#
+# ENHANCEMENTS:
+#   [ ] Redesign and revise when a watch method/return needs to be declared const.
 */
 #include <rgh/gep/core.hpp>
 
@@ -142,7 +145,7 @@ public:
 public:
     RGH_inline DispenserMode_ mode( void ) const { return _mode; }
 
-    template< typename ..._VARGS_ > RGH_inline _dispenser_acquire< _T_, false > watch( _VARGS_&&... args_ ) const; 
+    template< typename ..._VARGS_ > RGH_inline _dispenser_acquire< _T_, false > watch( _VARGS_&&... args_ ); 
     template< typename ..._VARGS_ > RGH_inline _dispenser_acquire< _T_, true > control( _VARGS_&&... args_ ); 
 
 public:
@@ -179,8 +182,9 @@ template< typename _T_, bool _IS_CONTROL_ > struct _dispenser_acquire {
 public:
     template< typename ..._VARGS_ >
     [[gnu::hot]] _dispenser_acquire( 
-        std::conditional_t< _IS_CONTROL_, Dispenser< _T_ >&, const Dispenser< _T_ >& > disp_, _VARGS_&&... vargs_ 
-    ) : _disp{ const_cast< Dispenser< _T_ >* >( &disp_ ) }, _M_{ disp_._mode }  
+        RGH_IN   Dispenser< _T_ >&   disp_, 
+        RGH_IN   _VARGS_&&...        vargs_ 
+    ) : _disp{ &disp_ }, _M_{ disp_._mode }  
     {
         switch( _disp->_mode ) {
             case DispenserMode_Lock: {
@@ -430,7 +434,7 @@ public:
 };
 
 template< typename _T_ > template< typename ..._VARGS_ > 
-_dispenser_acquire< _T_, false > Dispenser< _T_ >::watch( _VARGS_&&... args_ ) const { return _dispenser_acquire< _T_, false >{ *this, std::forward< _VARGS_ >( args_ )... }; }
+_dispenser_acquire< _T_, false > Dispenser< _T_ >::watch( _VARGS_&&... args_ ) { return _dispenser_acquire< _T_, false >{ *this, std::forward< _VARGS_ >( args_ )... }; }
 template< typename _T_ > template< typename ..._VARGS_ > 
 _dispenser_acquire< _T_, true > Dispenser< _T_ >::control( _VARGS_&&... args_ ) { return _dispenser_acquire< _T_, true >{ *this, std::forward< _VARGS_ >( args_ )... }; }
 

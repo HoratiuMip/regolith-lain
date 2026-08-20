@@ -1,10 +1,13 @@
-#pragma once
-/**
- * @file: gep/daemon.hpp
- * @brief: 
- * @details
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
+#pragma once /*
+# FILE: gep/daemon.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# ENHANCEMENTS:
+#   [ ] Reconsider whether daemon_wake is necessary, or just add a method that waits on
+#         the state until it changes from STARTING.
+*/
 #include <rgh/gep/core.hpp>
 #include <rgh/gep/dispenser.hpp>
 

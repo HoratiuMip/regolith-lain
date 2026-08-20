@@ -42,7 +42,7 @@
     #include <arpa/inet.h>
 #endif
 
-#define RGH_SPDLOG_PATTERN "[%n] [%^%l%$] %v"
+#define RGH_SPDLOG_PATTERN "[%Y-%m-%d %H:%M:%S] [%n] [%^%l%$] %v"
 
 namespace rgh {
 

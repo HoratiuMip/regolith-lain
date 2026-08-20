@@ -287,7 +287,7 @@ public:
     RGH_inline void disengage_depth_test( void ) { glDisable( GL_DEPTH_TEST ); }
 
 public:
-    bool has_dropped_files( void ) const { return !_dnd_files.watch()->empty(); }
+    bool has_dropped_files( void ) { return !_dnd_files.watch()->empty(); }
     auto flush_dropped_files( void ) { return std::move( *_dnd_files.control() ); }
 
 public:
@@ -422,6 +422,8 @@ public:
 
 public:
     RGH_inline static auto& io( void ) { return ImGui::GetIO(); }
+
+    RGH_inline static bool ctrl( ImGuiKey key_ ) { return io().KeyCtrl && ImGui::IsKeyPressed( key_ ); }
 
     RGH_inline static void movx( float dx_ ) { ImGui::SetCursorPosX( ImGui::GetCursorPosX() + dx_ ); }
     RGH_inline static void movy( float dy_ ) { ImGui::SetCursorPosY( ImGui::GetCursorPosY() + dy_ ); }

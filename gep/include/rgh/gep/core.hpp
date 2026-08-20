@@ -9,10 +9,12 @@
 
 #include <rgh/brp/descriptor.hpp>
 
+#include <algorithm>
 #include <any>
 #include <atomic>
 #include <charconv>
 #include <cmath>
+#include <compare>
 #include <condition_variable>
 #include <filesystem>
 #include <format>
