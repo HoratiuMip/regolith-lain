@@ -94,7 +94,7 @@ static status_t _populate_ports( COM_ports::container_t& ports_, COM_PORT_FILTER
         const char* vid  = udev_device_get_property_value( dev, "ID_VENDOR_ID" ) ?: RGH_NA;
         const char* mid  = udev_device_get_property_value( dev, "ID_MODEL_ID" ) ?: RGH_NA;
  
-        std::string detail = std::format( "{} - {} - ({}:{})", mdl, ven, mid, vid );
+        std::string detail = std::format( "{} - {} - ({}:{})", mdl, ven, vid, mid );
         RGH_ASSERT_OR( ports_.end() == std::ranges::find_if( ports_, [ &detail ] ( const COM_port_t& port_ ) -> bool {
             return port_.detail == detail;
         } ) ) continue;

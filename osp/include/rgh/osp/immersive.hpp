@@ -84,7 +84,29 @@ public:
             glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, params_.min_filter );
             glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, params_.mag_filter );
         _RGH_IMM_RESTORE_TEX_2D;
+
+        _width = image_.width; _height = image_.height;
         return RGH_OK;
+    }
+
+    status_t upld(
+        RGH_IN       const std::filesystem::path&   path_,
+        RGH_IN_OPT   const params_t&                params_
+    ) {
+        stbi_set_flip_vertically_on_load( params_.v_flip );
+        int                  x, y, n;
+        const auto           path   = path_.string();
+        unsigned char* const pixels = stbi_load( path.c_str(), &x, &y, &n, 4 );
+
+        RGH_ASSERT_OR( pixels ) {
+            RGH_BRDG_LOGE( "imm-tex: could not load from path {}.", path );
+            return RGH_ERR_EXCOMCALL;
+        }
+
+        status_t ret = this->upld( GLFWimage{ x, y, pixels }, params_ );
+        stbi_image_free( pixels );
+
+        return ret;
     }
 
     status_t deld( 
@@ -113,10 +135,18 @@ public:
 _RGH_PROTECTED:
     GLuint   _glidx     = GL_NONE;
     bool     _mipmaps   = false;
+    int      _width     = 0;
+    int      _height    = 0;
 
 public:
-    operator GLuint ( void ) { return _glidx; }
-    GLuint get( void ) { return _glidx; }
+    GLuint get( void ) const { return _glidx; }
+    int w( void ) const { return _width; }
+    int h( void ) const { return _height; }
+    float asp( void ) const { return static_cast< float >( _width ) / static_cast< float >( _height ); }
+
+    operator bool ( void ) const { return _glidx != GL_NONE; }
+    operator GLuint ( void ) const { return _glidx; }
+    operator ImTextureID ( void ) const { return static_cast< ImTextureID >( _glidx ); }
 };
 
 class Ren_target { friend class rgh::Immersive;
@@ -198,6 +228,7 @@ public:
         void*    ctx;
         double   t;
         double   dt;
+        bool     blink_500ms   = false;
     };
     struct init_cb_args_t {
         void*   ctx;
@@ -457,6 +488,15 @@ public:
     }
 
     RGH_inline static bool was_dbl_clk( void ) { return ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked( ImGuiMouseButton_Left ); }
+
+    static void fit_tex( const imm::Tex& tex_ ) {
+        const ImVec2 avl     = ImGui::GetContentRegionAvail();
+        const float  avl_asp = avl.x / avl.y;
+        const float  tex_asp = tex_.asp();
+        const ImVec2 res_sz  = ( avl_asp > tex_asp ) ? ImVec2{ avl.y*tex_asp, avl.y } : ImVec2{ avl.x, avl.x/tex_asp };
+
+        ImGui::Image( tex_, res_sz );
+    }
 
     static std::string select_file_button( 
         RGH_IN_OPT   Immersive*              imm_,

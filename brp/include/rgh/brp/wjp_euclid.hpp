@@ -11,7 +11,7 @@
 
 namespace rgh {
 
-class WJP_euclid {
+class WJP_euclid_MVC8 {
 public:
     static constexpr int   BUFFER_MAX_SZ   = 254;
 
@@ -22,19 +22,24 @@ public:
     };
 
 public:
-    WJP_euclid( void ) = default;
-
-    WJP_euclid( adapter_t* adapter_ ) : _adapter{ adapter_ } {}
+    WJP_euclid_MVC8( void ) = default;
+    WJP_euclid_MVC8( adapter_t* adapter_ ) : _adapter{ adapter_ } {}
 
 _RGH_PROTECTED:
     struct _state_t {
         uint8_t   trg_sz   = 0;
         uint8_t   crt_sz   = 0;
-    }            _state     = {};
-    adapter_t*   _adapter   = nullptr;
+    }            _state                     = {};
+    adapter_t*   _adapter                   = nullptr;
 
-    byte_t       _mrk       = 0x0;
+    byte_t       _mrk                       = 0x0;
     byte_t       _buffer[ BUFFER_MAX_SZ ];
+
+_RGH_PROTECTED:
+    RGH_inline void _reset_state( void ) {
+        _mrk = 0x0;
+        _state.trg_sz = _state.crt_sz = 0;
+    }
 
 public:
     RGH_inline void swap_adapter( adapter_t* adapter_ ) { _adapter = adapter_; }
@@ -49,7 +54,7 @@ public:
             _mrk = bytes_[ 0x0 ];
 
             int sz = _adapter->wjp_euclid_map_mark2sz( _mrk );
-            RGH_ASSERT_OR( sz <= BUFFER_MAX_SZ and sz >= 0 ) {
+            RGH_ASSERT_OR( sz <= BUFFER_MAX_SZ && sz >= 0 ) {
                 ++bytes_; --len_; goto l_begin;
             }
 
@@ -65,15 +70,14 @@ public:
         
         if( pck_end ) {
             memcpy( &_buffer[ _state.crt_sz ], bytes_, copy_len );
+            _state.crt_sz += copy_len;
 
             RGH_ASSERT_OR( crc8_smbus( &_mrk, _state.trg_sz + 1 ) == bytes_[ copy_len ] ) {
                 return RGH_ERR_CORRUPTED;
             }
             
             _adapter->wjp_euclid_process_packet( _mrk, _buffer );
-
-            _mrk = 0x0;
-            _state.crt_sz = _state.trg_sz = 0;
+            this->_reset_state();
 
             const int shift = copy_len + 1;
             if( (len_ -= shift) > 0 ) {
@@ -88,10 +92,22 @@ public:
         return RGH_OK;
     }
 
+    status_t encode_slide_when_corrupt( const byte_t* bytes_, int len_ ) {
+    l_begin:
+        status_t ret = this->encode( bytes_, len_ );
+        if( ret != RGH_ERR_CORRUPTED ) return ret;
+
+        RGH_ASSERT_OR( _state.crt_sz > 1 ) return RGH_ERR_CORRUPTED;
+
+        memmove( _buffer, _buffer+1, _state.crt_sz-1 );
+        this->_reset_state();
+        goto l_begin;
+    }
+
 public:
     static status_t slow_send( io::Port* port_, uint8_t mrk_, uint8_t sz, const byte_t* bytes_ ) {
         RGH_ASSERT_OR( port_ ) return RGH_ERR_BADARG;
-        RGH_ASSERT_OR( sz <= 254 and sz >= 0 ) return RGH_ERR_BADARG;
+        RGH_ASSERT_OR( sz <= 254 ) return RGH_ERR_BADARG;
 
         const uint8_t pck_sz = sz + 2;
         byte_t buffer[ pck_sz ];
@@ -105,7 +121,7 @@ public:
             .src_n   = pck_sz
         } );
     }
-
 };
+using WJP_euclid = WJP_euclid_MVC8;
 
 };

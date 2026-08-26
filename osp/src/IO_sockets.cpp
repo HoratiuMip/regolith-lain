@@ -11,10 +11,8 @@ namespace rgh::io {
 
 #define _CAGP _conn.addr_str.c_str(), _conn.port
 
-/* ===========================================
-    Implementation for Windows.
-*/
 #ifdef RGH_TARGET_OS_WINDOWS
+#error "IO sockets for windows not brought up to date yet."
 
 RGH_IMPL_FNC status_t IPv4_TCP_socket::bind( ipv4_addr_t addr_, ipv4_port_t port_ ) {
     RGH_ASSERT_OR( false ==_conn.alive.load( std::memory_order_acquire ) ) {
@@ -183,22 +181,19 @@ RGH_IMPL_FNC status_t IPv4_TCP_socket::holding_rx( int* bc_ ) {
     return RGH_OK;
 }
 
-/* ===========================================
-    Implementation for Linux.
-*/
 #elifdef RGH_TARGET_OS_LINUX
 
 RGH_IMPL_FNC status_t IPv4_TCP_socket::bind( ipv4_addr_t addr_, ipv4_port_t port_ ) {
     RGH_ASSERT_OR( false ==_conn.alive.load( std::memory_order_acquire ) ) {
         RGH_LOGE_INT( 
             RGH_ERR_WOULD_OVRWR, "Binding whilst alive {}:{} -> {}:{}.",
-             _CAGP, ipv4_addr_str_t::from( addr_ ).c_str(), port_ 
+            _CAGP, ipv4_addr_str_t{ addr_ }.c_str(), port_ 
         );
         return RGH_ERR_WOULD_OVRWR;
     }
 
     _sock          = -0x1;
-    _conn.addr_str = ipv4_addr_str_t::from( addr_ );
+    _conn.addr_str = ipv4_addr_str_t{ addr_ };
     _conn.addr     = addr_;
     _conn.port     = port_;
 
@@ -206,8 +201,8 @@ RGH_IMPL_FNC status_t IPv4_TCP_socket::bind( ipv4_addr_t addr_, ipv4_port_t port
     return RGH_OK;
 }
 
-RGH_IMPL_FNC status_t IPv4_TCP_socket::bind( const char* addr_str_, ipv4_port_t port_ ) {
-    return this->bind( ipv4_addr_str_t::from( addr_str_ ), port_ );
+RGH_IMPL_FNC status_t IPv4_TCP_socket::bind( const char* addr_, ipv4_port_t port_ ) {
+    return this->bind( ipv4_addr_str2n( addr_ ), port_ );
 }
 
 RGH_IMPL_FNC status_t IPv4_TCP_socket::connect( const config_t& config_ ) {
@@ -309,7 +304,7 @@ RGH_IMPL_FNC status_t IPv4_TCP_socket::accept( IPv4_TCP_socket* sock_, const con
         sock_->timeouts( config_.timeouts );
 
     sock_->_conn.addr     = in_desc.sin_addr.s_addr;
-    sock_->_conn.addr_str = ipv4_addr_str_t::from( sock_->_conn.addr );
+    sock_->_conn.addr_str = ipv4_addr_str_t{ sock_->_conn.addr };
     sock_->_conn.port     = in_desc.sin_port;
     sock_->_conn.alive.store( true, std::memory_order_release );
 

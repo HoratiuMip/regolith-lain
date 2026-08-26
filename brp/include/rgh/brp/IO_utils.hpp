@@ -1,10 +1,9 @@
-#pragma once
-/**
- * @file: BRp/IO_string_utils.hpp
- * @brief: Utility function to convert between text and binary formns of IO-related types.
- * @details: The so dubbed "IO-related types" include: IPv4 addresses, Bluetooth adresses, and so forth.
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
+#pragma once /*
+# FILE: brp/IO_utils.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+*/
 
 #include <rgh/brp/descriptor.hpp>
 #include <rgh/brp/IO_port.hpp>
@@ -25,31 +24,32 @@ struct wifi_rssi_str_t {
     RGH_inline operator const char* ( void ) const { return buf; }
 };
 
+#pragma region IPv4
+//# Maximum size of an IPv4 address string: 4 groups of 3 digits and 3 dots.
+constexpr int IPv4_ADDR_STR_MAX_SZ = 4*3 + 3;
+
+//# Check whether the given pointer contains a valid IPv4 address string.
+bool ipv4_addr_valid( const char* addr_ );
+//# Convert the given string to an IPv4 address.
+ipv4_addr_t ipv4_addr_str2n( const char* addr_ );
+
 struct ipv4_addr_str_t {
-    inline static constexpr int   BUF_SIZE   = 0x4*3 + 0x3 + 0x1;
+    ipv4_addr_str_t( void ) = default;
+    ipv4_addr_str_t( ipv4_addr_t addr_ ) noexcept;
+    ipv4_addr_str_t( const char* addr_ ) noexcept;
 
-    char   buf[ BUF_SIZE ]   = { '\0' }; 
+    char   buf[ IPv4_ADDR_STR_MAX_SZ+1 ]   = { '\0' }; 
 
+//# Copy "0.0.0.0" into the buffer.
     void make_zero( void ) { strcpy( buf, "0.0.0.0" ); }
+//# Invalidate the buffer.
     void make_null( void ) { buf[ 0 ] = { '\0' }; }
 
-    static void from_ptr( ipv4_addr_t addr_, ipv4_addr_str_t* ptr_ );
-    static ipv4_addr_str_t from( ipv4_addr_t addr_ );
-    static ipv4_addr_t from( const char* addr_str_ );
-
-    char* c_str( void ) { return buf; }
-    operator char* ( void ) { return buf; }
+    operator bool( void ) const { return buf[ 0x0 ] != '\0'; }
+    const char* c_str( void ) const { return buf; }
+    operator const char* ( void ) const { return buf; }
 };
-
-struct ipv4_addr_pack_t : public ipv4_addr_str_t {
-    ipv4_addr_pack_t( void ) = default;
-    ipv4_addr_pack_t( ipv4_addr_t addr_ ) : ipv4_addr_str_t{ ipv4_addr_str_t::from( addr_ ) }, addr{ addr_ } {}
-    ipv4_addr_pack_t( const char* addr_str_ ) : addr{ ipv4_addr_str_t::from( addr_str_ ) } {
-        strncpy( ipv4_addr_str_t::buf, addr_str_, ipv4_addr_str_t::BUF_SIZE );
-    }
-
-    ipv4_addr_t   addr   = 0x0;
-};
+#pragma endregion IPv4
 
 struct bt_addr_str_t {
     inline static constexpr int   BUF_SIZE   = 0x6*2 + 0x5 + 0x1;

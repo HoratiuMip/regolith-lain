@@ -8,6 +8,7 @@
 
 #include <rgh/osp/immersive.hpp>
 #include <rgh/osp/IO_utils.hpp>
+#include <rgh/osp/thread_pool.hpp>
 
 namespace rgh::imm_widgets {
 
@@ -40,6 +41,14 @@ public:
 };
 
 class COM_ports {
+public:
+    struct frame_args_t : rgh::Immersive::frame_cb_args_t {
+        IN       const char*                    scan_btn_lbl_   = "Scan for COM ports";
+        IN       const char*                    no_ports_lbl_   = "No COM ports found.";
+        IN_OPT   HVec< Task_taker >             tsk_tkr_        = nullptr;
+        IN_OPT   std::array< const char*, 3 >   hl_keys_        = {};
+    };
+
 public:
     COM_ports( void ) = default;
 
@@ -76,49 +85,55 @@ public:
         return OK;
     }
 
-    std::tuple< const io::COM_port_t*, bool, bool > imm_frame( 
+//# connect, scan requested
+    std::tuple< const io::COM_port_t*, bool > imm_frame( 
         IN   io::COM_ports::watch_t&   watch_,
-        IN   const char*               scan_btn_lbl_   = "Scan for COM ports",
-        IN   const char*               no_ports_lbl_   = "No COM ports found."
+        IN   const frame_args_t&       args_      
     ) {
-        bool rescan = ImGui::Button( scan_btn_lbl_ );
+        const io::COM_port_t* conn_to  = nullptr;
+        bool                  scan_req = ImGui::Button( args_.scan_btn_lbl_ );
+        bool dconn   = false;
 
         auto& ports = *watch_;
-
-        bool sel_now = false;
         if( not ports.empty() ) {
             for( int idx = 0x0; idx < ports.size(); ++idx ) {
-                const bool selected = idx == _sel;
+                auto& crt_port = ports[ idx ];
 
                 ImGui::Separator();
-                ImGui::Bullet();
-                if( ImGui::Selectable( ports[ idx ].detail.c_str(), selected, selected ? ImGuiSelectableFlags_Highlight : ImGuiSelectableFlags_None ) ) {
-                    _sel    = idx;
-                    _sel_id = ports[ _sel ].id;
-                    sel_now = true;
-                }
+                    int  selectable_flags = ImGuiSelectableFlags_None;
+                    bool selected         = false;
+                
+                    ImGui::SameLine();
+                    if( ImGui::Button( "Connect" ) ) conn_to = &crt_port;
+                    if( ImGui::IsItemHovered() ) { selectable_flags |= ImGuiSelectableFlags_Highlight; }
+
+                    for( const char* hl_key : args_.hl_keys_ ) {
+                        if( not args_.blink_500ms || hl_key == nullptr ) break;
+                        
+                        if( crt_port.detail.contains( hl_key ) ) {
+                            selected |= true;
+                            break;
+                        }
+                    }
+                    ImGui::SameLine(); ImGui::Bullet();
+                    if( ImGui::Selectable( crt_port.detail.c_str(), selected, static_cast< ImGuiSelectableFlags_ >( selectable_flags ) ) ) {
+                        
+                    }
                 ImGui::Separator();
             }
         } else {
             ImGui::Separator();
-            ImGui::BulletText( no_ports_lbl_ );
+            ImGui::BulletText( args_.no_ports_lbl_ );
             ImGui::Separator();
         }
         
-        if( _sel >= 0x0 && _sel < ports.size() ) return { &ports[ _sel ], sel_now, rescan }; 
+        if( scan_req && args_.tsk_tkr_ ) args_.tsk_tkr_->task_taker_pass( [ ports = _ports ] ( void ) -> void { ports->scan(); } );
 
-        this->unselect();
-        return { nullptr, false, rescan };
-    }
-
-    void unselect( void ) {
-        _sel    = -0x1;
-        _sel_id = "";
+        return { conn_to, scan_req }; 
     }
 
 public:
     RGH_inline io::COM_ports* operator -> ( void ) { return _ports.get(); }
-
 };
 
 

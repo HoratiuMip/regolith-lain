@@ -1,10 +1,9 @@
-#pragma once
-/**
- * @file: brp/IO_port.hpp
- * @brief: Basic input/output interface.
- * @details
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
+#pragma once /*
+# FILE: brp/IO_port.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+*/
 
 #include <rgh/brp/descriptor.hpp>
 
@@ -51,15 +50,6 @@ public:
     virtual status_t write( 
         RGH_IN_OUT   const port_W_desc_t&   desc_ 
     ) = 0;
-
-public:
-    status_t basic_read_loop( 
-        RGH_IN_OUT   const port_R_desc_t&    desc_ 
-    );
-
-    status_t basic_write_loop( 
-        RGH_IN_OUT   const port_W_desc_t&    desc_ 
-    );
 };
 
 

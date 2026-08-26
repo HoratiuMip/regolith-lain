@@ -11,7 +11,7 @@
 namespace rgh {
 
 
-class Thread_pool {
+class Thread_pool : public Task_taker {
 public:
     typedef   std::function< void( void ) >   task_t;
 
@@ -37,6 +37,11 @@ public:
     } _rgh_catch( {
         return RGH_ERR_BADALLOC;
     } );
+
+    virtual status_t task_taker_pass( Task_taker::task_t task_ ) override {
+        return this->push( task_ );
+    }
+
 
 public:
     status_t launch( int th_cnt_ ) noexcept _rgh_try {

@@ -3,14 +3,12 @@
 THIS FILE WAS GENERATED DURING BUILD AND IT WILL BE OVERRIDEN IN THE NEXT ONE.
 DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 */
-#pragma once
-/**
- * @file: brp/descriptor.hpp.in
- * @brief: 
- * @details
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
-
+#pragma once /*
+# FILE: brp/descriptor.hpp.in
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+*/
 
 #define RGH_VERSION_MAJOR 1
 #define RGH_VERSION_MINOR 0

@@ -6,7 +6,7 @@
 #
 # DETAILS: Implementation file.
 */
-
+#define STB_IMAGE_IMPLEMENTATION
 #include <rgh/osp/immersive.hpp>
 #ifdef RGH_DEPCOM_ELIGIBLE_IMMERSIVE
 
@@ -211,10 +211,12 @@ status_t Immersive::main(
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
+        const auto elapsed_s = glfwGetTime();
         RGH_ASSERT_OR( RGH_OK == this->_config.loop_cb( frame_cb_args_t{
-            .ctx = _config.ctx,
-            .t   = glfwGetTime(),
-            .dt  = imgui.io->DeltaTime
+            .ctx         = _config.ctx,
+            .t           = elapsed_s,
+            .dt          = imgui.io->DeltaTime,
+            .blink_500ms = static_cast< int >( elapsed_s*1000.0 ) % 1000 <= 500
         } ) ) _running.store( false, std::memory_order_relaxed );
 
         ImGui::Render();

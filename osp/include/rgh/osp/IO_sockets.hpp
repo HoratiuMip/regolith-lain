@@ -9,7 +9,7 @@
 #include <rgh/osp/core.hpp>
 
 #include <rgh/brp/IO_port.hpp>
-#include <rgh/brp/IO_string_utils.hpp>
+#include <rgh/brp/IO_utils.hpp>
 
 
 namespace rgh::io { 

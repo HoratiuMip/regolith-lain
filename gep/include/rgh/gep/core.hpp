@@ -48,7 +48,7 @@ _RGH_PROTECTED:
     template< typename > friend class HVec;
 
 public:
-// # General constructors and assign operators.
+//# General constructors and assign operators.
     HVec() = default;
 
     HVec( std::nullptr_t ) : HVec{} {}
@@ -60,7 +60,7 @@ public:
     HVec( HVec&& ) noexcept = default;
     HVec& operator = ( HVec&& ) noexcept = default;
 
-// # Niche constructors and assign operators.
+//# Niche constructors and assign operators.
     HVec( _T_* ptr_ ) : _sptr{ ptr_ } {}
     HVec& operator = ( _T_* ptr_ ) { _sptr = sptr_t{ ptr_ }; return *this; }
 
@@ -70,7 +70,7 @@ public:
     HVec( hvec_weak_ptr_t< _T_ > hp_  ) : _sptr{ hp_.ptr, [](_T_*){} } {}
     HVec& operator = ( hvec_weak_ptr_t< _T_ > hp_  ) { _sptr = sptr_t{ hp_.ptr, [](_T_*){} }; return *this; }
 
-// # Inheritance chain constructors and assign operators.
+//# Inheritance chain constructors and assign operators.
     template< typename U_ > requires (std::is_convertible_v< U_*, _T_* >)
     HVec( const HVec< U_ >& other_ ) : _sptr{ other_._sptr } {}
     template< typename U_ > requires (std::is_convertible_v< U_*, _T_* >)
@@ -81,19 +81,19 @@ public:
     template< typename U_ > requires (std::is_convertible_v< U_*, _T_* >)
     HVec& operator = ( HVec< U_ >&& other_ ) { _sptr = std::move( other_._sptr ); return *this; }
 
-// # Other constructors and assign operators.
+//# Other constructors and assign operators.
     HVec( const sptr_t& sp_ ) : _sptr{ sp_ } {}
     HVec& operator = ( const sptr_t& sp_  ) { _sptr = sp_; return *this; }
 
     HVec( sptr_t&& sp_ ) : _sptr{ std::move( sp_ ) } {}
     HVec& operator = ( sptr_t&& sp_  ) noexcept { _sptr = std::move( sp_ ); return *this; }
 
-// # Getter methods.
+//# Getter methods.
     _T_* get       () const { return _sptr.get(); }
     auto use_count () const { return _sptr.use_count(); }
     void reset     ()       { _sptr.reset(); }
 
-// # Operators.
+//# Operators.
     _T_& operator *  () const { return *_sptr; }
     _T_* operator -> () const { return _sptr.get(); }
 
@@ -103,7 +103,7 @@ public:
     explicit operator bool () const { return static_cast< bool >( _sptr ); }
     operator _T_& () const { return *_sptr; }
 
-// # Factory.
+//# Factory.
     template< typename... Args_ >
     static HVec make( Args_&&... args_ ) { return HVec{ std::make_shared< _T_ >( std::forward< Args_ >( args_ )... ) }; }
 
@@ -116,5 +116,15 @@ _RGH_PROTECTED:
 */
 template< typename _T_ > _T_* rval_addr( _T_&& rval_ ) noexcept { return &rval_; }
 #define RGH_RVAL_ADDR( rval_ ) (rgh::rval_addr( (rval_) ) )
+
+/*
+# DETAILS: 
+*/
+class Task_taker {
+public:
+    typedef   std::function< void( void ) >   task_t;
+    virtual ~Task_taker( void ) = default;
+    virtual status_t task_taker_pass( task_t task_ ) = 0;
+};
 
 }
