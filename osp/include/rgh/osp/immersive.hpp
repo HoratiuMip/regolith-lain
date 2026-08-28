@@ -461,6 +461,7 @@ public:
     RGH_inline static void movxy( float dx_, float dy_ ) { movx( dx_ ); movy( dy_ ); }
     RGH_inline static void movxy( const ImVec2& dv_ ) { ImGui::SetCursorPos( dv_ ); }
     RGH_inline static void movxy( const ImVec2& dv_, const ImVec2& ddv_ ) { movxy( dv_ + ddv_ ); }
+    RGH_inline static void movln( float lcnt_ ) { movy( ImGui::GetTextLineHeightWithSpacing() * lcnt_ ); }
 
     RGH_inline static auto cursor( void ) { return ImGui::GetCursorPos(); }
     RGH_inline static auto here( void ) { return ImGui::GetCursorPos(); }
@@ -498,13 +499,22 @@ public:
         ImGui::Image( tex_, res_sz );
     }
 
+    static bool hilight_button( const char* lbl_, bool highlight_ ) {
+        if( not highlight_ ) return ImGui::Button( lbl_ );
+
+        ImGui::PushStyleColor( ImGuiCol_Button, ImGui::GetStyleColorVec4( ImGuiCol_ButtonActive ) );
+            bool pressed = ImGui::Button( lbl_ );
+        ImGui::PopStyleColor();
+        return pressed;
+    }
+
     static std::string select_file_button( 
         RGH_IN_OPT   Immersive*              imm_,
         RGH_IN       const char*             label_,
         RGH_IN       const char*             key_id_,
         RGH_IN       const char*             title_,
         RGH_IN       const char*             format_,
-        RGH_IN_OPT   ImVec2                  min_sz_   = { 400, 300 },
+        RGH_IN_OPT   ImVec2                  min_sz_   = { 648, 480 },
         RGH_IN_OPT   const char*             path_     = ".",
         RGH_IN_OPT   ImGuiFileDialogFlags_   flags_    = ImGuiFileDialogFlags_None
     ) {

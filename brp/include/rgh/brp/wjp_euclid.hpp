@@ -34,7 +34,7 @@ _RGH_PROTECTED:
 
     byte_t       _mrk                       = 0x0;
     byte_t       _buffer[ BUFFER_MAX_SZ ];
-
+ ImGui::InputFloat( "Base fare", &internal::tarrif_sim_config.base_fare, 0.01f, 0.0f, "%.2f Euro", ImGuiInputTextFlags_None );
 _RGH_PROTECTED:
     RGH_inline void _reset_state( void ) {
         _mrk = 0x0;

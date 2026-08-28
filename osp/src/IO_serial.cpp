@@ -313,7 +313,7 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
 
         RGH_ASSERT_AND( plr > 0 ) {
             RGH_ASSERT_OR( (pfd.revents & (POLLHUP | POLLERR)) == 0x0 ) {
-                RGH_BRDG_LOGE( "ft_serial: POLLHUP or POLLERR on {}.", _device );
+                RGH_BRDG_LOGE( "ft_serial: sudden disconnect of {}.", _device );
                 break;
             }
 

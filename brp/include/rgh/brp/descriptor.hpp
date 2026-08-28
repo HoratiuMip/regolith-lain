@@ -164,6 +164,10 @@ inline static const char* const _status_msgs[] = {
 
 #define RGH_NA "N/A"
 
+//# Check whether an object of type B* has overridden a virtual function. Yes, borderline illegal, 
+//#   works on my machine and on compiler explorer with GCC for x86 and ARM.
+#define RGH_ILL_HAS_OVERRIDDEN( obj_ptr, v_fnc ) ((void*)((obj_ptr)->*(&v_fnc))!=(void*)(&v_fnc))
+
 typedef   uint8_t   byte_t;
 
 struct MDsc {

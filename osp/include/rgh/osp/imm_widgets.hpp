@@ -23,7 +23,8 @@ _RGH_PROTECTED:
     int                  _size    = 0x0;
 
 public:
-    int imm_frame( const char* const title_, bool* changed_ = nullptr ) {
+//# [currently selected][changed now]
+    std::tuple< int, bool > imm_frame( const char* const title_ ) {
         const int prev_sel = _sel;
 
         if( ImGui::BeginCombo( title_, _sel >= 0 && _sel < _size ? _strs[ _sel ] : "N/A" ) ) {
@@ -34,10 +35,14 @@ public:
             ImGui::EndCombo();
         }
 
-        if( changed_ ) *changed_ |= _sel != prev_sel;
-        return _sel;
+        return { _sel, _sel != prev_sel };
     }
 
+    status_t select( int sel_ ) {
+        RGH_ASSERT_OR( sel_ >= 0x0 && sel_ < _size ) return RGH_ERR_BADARG;
+        _sel = sel_;
+        return RGH_OK;
+    }
 };
 
 class COM_ports {
