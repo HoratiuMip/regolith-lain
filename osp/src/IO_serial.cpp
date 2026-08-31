@@ -330,7 +330,7 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
             RGH_ASSERT_AND( buffer_sz > 0 ) this->_bytes_cb( buffer, buffer_sz );
 
         } else RGH_ASSERT_AND( plr == 0 ) {
-            /* Timeout on the poll. */
+            /*# Timeout on the poll. */
         } else {
             if( errno == EINTR ) continue;
             RGH_BRDG_LOGE( "ft_serial: bad poll on {}: {}.", _device, std::strerror( errno ) );

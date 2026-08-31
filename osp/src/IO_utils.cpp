@@ -213,7 +213,7 @@ RGH_IMPL_FNC std::expected< std::vector< ipv4_addr_t >, ret_t > ipv4_hosts_of( s
     }
 #if defined( RGH_TARGET_OS_LINUX )
     addrinfo hints{
-        .ai_family   = AF_INET
+        .ai_family = AF_INET
     };  
 
     addrinfo* result;
@@ -236,9 +236,8 @@ RGH_IMPL_FNC std::expected< std::vector< ipv4_addr_t >, ret_t > ipv4_hosts_of( s
 #endif
 }
 
-
 //# Request an NTP packet on the given port.
-RGH_IMPL_FNC std::expected< ntp_packet_t, ret_t > ntp_get( Port& port_, bool make_unix_  ) noexcept {
+RGH_IMPL_FNC std::expected< ntp_packet_t, ret_t > ntp_get( Port& port_, bool make_unix_ ) noexcept {
     auto packet = ntp_packet_t::client_request();
 
     RGH_ASSERT_STATUS_OR( port_.write( { 
