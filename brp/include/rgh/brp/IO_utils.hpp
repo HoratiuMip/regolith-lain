@@ -75,4 +75,59 @@ struct bt_addr_pack_t : bt_addr_t, bt_addr_str_t {
     void pull_n( void ) { static_cast< bt_addr_t& >( *this ) = bt_addr_str_t::from( static_cast< bt_addr_str_t& >( *this ) ); }
 };
 
+
+inline constexpr int           NTP_PACKET_SZ   = 48;
+inline constexpr uint32_t      NTP_UNIX_OFFSET = 2208988800;
+inline constexpr ipv4_port_t   NTP_PORT        = 123;
+enum NTP_mode_ : uint8_t {
+    NTP_mode_client = 0b011
+};
+#pragma pack( push, 1 )
+struct ntp_packet_t {
+    union {
+        struct {
+            uint8_t   Mode : 3;
+            uint8_t   VN   : 3;
+            uint8_t   LI   : 2;
+        };
+        uint8_t B0;
+    };
+    uint8_t    stratum;
+    uint8_t    poll;
+    uint8_t    precision;
+    uint32_t   root_delay;
+    uint32_t   root_dispersion;
+    uint32_t   ref_id;
+    struct {
+        uint32_t   ref_s;
+        uint32_t   ref_f;
+        uint32_t   org_s;
+        uint32_t   org_f;
+        uint32_t   rx_s;
+        uint32_t   rx_f;
+        uint32_t   tx_s; 
+        uint32_t   tx_f; 
+    }          ts;
+
+    void make_unix( void ) {
+        ts.ref_s -= NTP_UNIX_OFFSET;
+        ts.ref_f -= NTP_UNIX_OFFSET;
+        ts.org_s -= NTP_UNIX_OFFSET;
+        ts.org_f -= NTP_UNIX_OFFSET;
+        ts.rx_s  -= NTP_UNIX_OFFSET;
+        ts.rx_f  -= NTP_UNIX_OFFSET;
+        ts.tx_s  -= NTP_UNIX_OFFSET; 
+        ts.tx_f  -= NTP_UNIX_OFFSET; 
+    }
+
+    static ntp_packet_t client_request( void ) {
+        return {
+            .Mode = NTP_mode_client,
+            .VN   = 4
+        };
+    }
+};
+#pragma pack( pop )
+static_assert( sizeof( ntp_packet_t ) == NTP_PACKET_SZ );
+
 } };

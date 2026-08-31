@@ -31,11 +31,13 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
     #define _rgh_catch( scope_ )
 #endif
 
-#define RGH_ASSERT_OR(c)            if( !(c) )
+#define RGH_ASSERT_OR(c)            if(!(c))
 #define RGH_ASSERT_AND(c)           if((c))
+#define RGH_ASSERT_OR_EX(g,c)       if(const auto ret_=(g);!(c))
+#define RGH_ASSERT_AND_EX(g,c)      if(const auto ret_=(g);(c))
 #define RGH_ASSERT_STATUS_OR(c)     if(rgh::status_t status_=(c);RGH_OK!=status_)
 #define RGH_ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR(c) {return status_;}
-#define RGH_ASSERT_STATUS_AND(c)     if(rgh::status_t status_=(c);RGH_OK==status_)
+#define RGH_ASSERT_STATUS_AND(c)    if(rgh::status_t status_=(c);RGH_OK==status_)
 
 #ifndef RGH_NO_EZ_ASSERTS
     #define ASSERT_OR(c) RGH_ASSERT_OR(c)
@@ -96,6 +98,7 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 namespace rgh {
 
 typedef   int   status_t;
+typedef   int   ret_t;
 
 #define RGH_OK               0x0
 #define RGH_ERR_GENERAL      -0x1

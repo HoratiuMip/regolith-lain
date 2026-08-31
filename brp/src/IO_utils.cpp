@@ -67,13 +67,13 @@ RGH_IMPL_FNC ipv4_addr_t ipv4_addr_str2n( const char* addr_ ) {
 RGH_IMPL_FNC ipv4_addr_str_t::ipv4_addr_str_t( ipv4_addr_t addr_ ) noexcept {
     int n = 0x0;
 #ifdef RGH_TARGET_END_BIG
-    for( int bi = 0x3; bi >= 0x0; --bi )
-#else
     for( int bi = 0x0; bi < 0x4; ++bi )  
+#else
+    for( int bi = 0x3; bi >= 0x0; --bi )  
 #endif
     {
         unsigned char b = reinterpret_cast< unsigned char* >( &addr_ )[ bi ];
-        n += snprintf( buf + n, 3, "%u", b );
+        n += snprintf( buf + n, 4, "%u", b );
         *( buf + n ) = '.';
         ++n;
     } 

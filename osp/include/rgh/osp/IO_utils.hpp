@@ -5,9 +5,12 @@
  * @details:
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
-
-#include <rgh/osp/core.hpp>
+#include <rgh/brp/IO_port.hpp>
+#include <rgh/brp/IO_utils.hpp>
 #include <rgh/gep/dispenser.hpp>
+#include <rgh/osp/core.hpp>
+
+#include <expected>
 
 namespace rgh::io {
 
@@ -78,5 +81,11 @@ public:
     status_t unregister_hotplug_callback( const char* key_ );
 
 };
+
+
+std::expected< std::vector< ipv4_addr_t >, ret_t > ipv4_hosts_of( std::string_view domain_ ) noexcept; 
+
+
+std::expected< ntp_packet_t, ret_t > ntp_get( Port& port_, bool make_unix_ = true ) noexcept; 
 
 }
