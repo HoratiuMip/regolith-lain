@@ -90,9 +90,9 @@ public:
 
 };
 
-class IPv4_UDP_rogue_client {
+class IPv4_Kraken {
 public:
-    IPv4_UDP_rogue_client( void ) = default;
+    IPv4_Kraken( void ) = default;
 
 _RGH_PROTECTED:
     struct _tbl_key_t {
@@ -129,25 +129,30 @@ _RGH_PROTECTED:
 
                 end_val.addr_in.sin_family      = AF_INET;
                 end_val.addr_in.sin_addr.s_addr = ::htonl( endp_.addr ); 
-                end_val.addr_in.sin_port        = ::htons( endp_.port ); 
+                end_val.addr_in.sin_port        = ::htons( endp_.port );
 
-                end_val.fdesc = socket( AF_INET, SOCK_DGRAM, 0 );
+                end_val.fdesc = socket( AF_INET, endp_.proto, 0 );
                 RGH_ASSERT_OR( end_val.fdesc > 0 ) {
-                    RGH_BRDG_LOGE( "ipv4 udp rc: bad fd: {}.", end_val.fdesc );
+                    RGH_BRDG_LOGE( "ipv4 kraken: bad fd: {}.", std::strerror( errno ) );
                     return nullptr;
                 }
 
                 RGH_ASSERT_OR( 0 == ::connect( end_val.fdesc, ( sockaddr* )&end_val.addr_in, sizeof( sockaddr_in ) ) ) {
-                    RGH_BRDG_LOGE( "ipv4 udp rc: bad connect to {}:{}: {}.", ipv4_addr_str_t{ endp_.addr }.c_str(), endp_.port, std::strerror( errno ) );
+                    RGH_BRDG_LOGE( "ipv4 kraken: bad connect to {}:{}: {}.", ipv4_addr_str_t{ endp_.addr }.c_str(), endp_.port, std::strerror( errno ) );
                     return nullptr;
                 }
 
-                RGH_BRDG_LOGI( "ipv4 udp rc: new endpoint {}:{} ({}).", ipv4_addr_str_t{ endp_.addr }.c_str(), endp_.port, end_val.fdesc );
+                RGH_BRDG_LOGI( "ipv4 kraken: new endpoint {}:{} ({}).", ipv4_addr_str_t{ endp_.addr }.c_str(), endp_.port, end_val.fdesc );
             }
 
             return &end_val;
         } _rgh_catch( {} )
         return nullptr;
+    }
+
+public:
+    ret_t push( ipv4_endpoint_t endp_ ) {
+        return this->_pull_endpoint( endp_ ) ? RGH_OK : RGH_ERR_GENERAL;
     }
 
 public:
@@ -182,7 +187,7 @@ public:
 
     class Endpoint_port : public Port {
     public:
-        Endpoint_port( IPv4_UDP_rogue_client* super_, ipv4_endpoint_t endp_ ) {
+        Endpoint_port( IPv4_Kraken* super_, ipv4_endpoint_t endp_ ) {
             const auto* const end_val = super_->_pull_endpoint( endp_ );
             RGH_ASSERT_OR( end_val ) return;
 

@@ -130,4 +130,7 @@ struct ntp_packet_t {
 #pragma pack( pop )
 static_assert( sizeof( ntp_packet_t ) == NTP_PACKET_SZ );
 
+
+template< typename _impl_t_ > class Fasttrack{};
+
 } };

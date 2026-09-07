@@ -230,6 +230,8 @@ RGH_IMPL_FNC std::expected< std::vector< ipv4_addr_t >, ret_t > ipv4_hosts_of( s
     }
 
     freeaddrinfo( result );
+
+    RGH_ASSERT_OR( not hosts.empty() ) return std::unexpected{ RGH_ERR_NO_RESOLVE };
     return hosts;
 #else
     return std::unexpected{ RGH_ERR_NOT_IMPL };

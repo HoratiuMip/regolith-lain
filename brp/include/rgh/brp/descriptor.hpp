@@ -38,6 +38,9 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 #define RGH_ASSERT_STATUS_OR(c)     if(rgh::status_t status_=(c);RGH_OK!=status_)
 #define RGH_ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR(c) {return status_;}
 #define RGH_ASSERT_STATUS_AND(c)    if(rgh::status_t status_=(c);RGH_OK==status_)
+#define RGH_ASSERT_RET_OR(c)        if(rgh::ret_t ret_=(c);RGH_OK!=ret_)
+#define RGH_ASSERT_RET_OR_RET(c)    RGH_ASSERT_RET_OR(c) {return ret_;}
+#define RGH_ASSERT_RET_AND(c)       if(rgh::ret_t ret_=(c);RGH_OK==ret_)
 
 #ifndef RGH_NO_EZ_ASSERTS
     #define ASSERT_OR(c) RGH_ASSERT_OR(c)
@@ -45,6 +48,9 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
     #define ASSERT_STATUS_OR(c) RGH_ASSERT_STATUS_OR(c)
     #define ASSERT_STATUS_OR_RET(c) RGH_ASSERT_STATUS_OR_RET(c)
     #define ASSERT_STATUS_AND(c) RGH_ASSERT_STATUS_AND(c)
+    #define ASSERT_RET_OR(c) RGH_ASSERT_RET_OR(c)
+    #define ASSERT_RET_OR_RET(c) RGH_ASSERT_RET_OR_RET(c)
+    #define ASSERT_RET_AND(c) RGH_ASSERT_RET_AND(c)
 #endif
 
 #define RGH_STRUCT_HAS_OVR( obj, fnc ) ((void*)((obj).*(&fnc))!=(void*)(&fnc))
@@ -133,6 +139,7 @@ inline static const char* const _status_msgs[] = {
     "CORRUPTED", "CALLSITE"
 };
 #define RGH_STATUS_MSG(s) (rgh::_status_msgs[-(s)])
+#define RGH_RET_MSG(s) RGH_STATUS_MSG(s)
 
 #ifndef RGH_NO_UNSCOPED_STATUS_DEFS
     #define OK               0x0
@@ -161,6 +168,7 @@ inline static const char* const _status_msgs[] = {
     #define ERR_CALLSITE     -0x17
 
     #define STATUS_MSG(c) RGH_STATUS_MSG(c)
+    #define RET_MSG(c) RGH_RET_MSG(c)
 #endif
 
 #define RGH_UNIMPLEMENTED {return RGH_ERR_NOT_IMPL;}

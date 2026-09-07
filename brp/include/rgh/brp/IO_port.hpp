@@ -12,9 +12,28 @@ namespace rgh { namespace io {
 typedef   uint32_t   ipv4_addr_t;
 typedef   uint16_t   ipv4_port_t;
 
+enum IP_PROTO : int {
+    IP_PROTO_TCP
+    #if defined( SOCK_STREAM )
+        = SOCK_STREAM
+    #else
+        = 1
+    #endif
+    ,
+
+    IP_PROTO_UDP
+    #if defined( SOCK_DGRAM )
+        = SOCK_DGRAM
+    #else
+        = 2
+    #endif
+};
+
+//# A structure containing an IPv4 address, a port, and a protocol.
 struct ipv4_endpoint_t {
-    ipv4_addr_t   addr   = {};
-    ipv4_port_t   port   = {};
+    ipv4_addr_t   addr    = {};
+    ipv4_port_t   port    = {};
+    IP_PROTO      proto   = {};
     
 #define _RGH_IO_IPv4_ENDPOINT_COMP_OP( op ) bool operator op ( const ipv4_endpoint_t& rhs_ ) const noexcept { return addr == rhs_.addr ? port op rhs_.port : addr op rhs_.addr; }
     _RGH_IO_IPv4_ENDPOINT_COMP_OP( < )
@@ -23,7 +42,10 @@ struct ipv4_endpoint_t {
     _RGH_IO_IPv4_ENDPOINT_COMP_OP( >= )
 #undef _RGH_IO_IPv4_ENDPOINT_COMP_OP
     bool operator == ( const ipv4_endpoint_t& rhs_ ) const noexcept { return addr == rhs_.addr && port == rhs_.port; }
+
+    bool is_valid( void ) const { return addr != 0x0 && port != 0x0; }
 };
+
 
 typedef   struct bt_addr_t { uint8_t b[6]; }   bt_addr_t;
 
