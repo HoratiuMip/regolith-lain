@@ -102,29 +102,31 @@ public:
         auto& ports = *watch_;
         if( not ports.empty() ) {
             for( int idx = 0x0; idx < ports.size(); ++idx ) {
-                auto& crt_port = ports[ idx ];
+                ImGui::PushID( idx );
+                    auto& crt_port = ports[ idx ];
 
-                ImGui::Separator();
-                    int  selectable_flags = ImGuiSelectableFlags_None;
-                    bool selected         = false;
-                
-                    ImGui::SameLine();
-                    if( ImGui::Button( "Connect" ) ) conn_to = &crt_port;
-                    if( ImGui::IsItemHovered() ) { selectable_flags |= ImGuiSelectableFlags_Highlight; }
+                    ImGui::Separator();
+                        int  selectable_flags = ImGuiSelectableFlags_None;
+                        bool selected         = false;
+                    
+                        ImGui::SameLine();
+                        if( ImGui::Button( "Connect" ) ) conn_to = &crt_port;
+                        if( ImGui::IsItemHovered() ) { selectable_flags |= ImGuiSelectableFlags_Highlight; }
 
-                    for( const char* hl_key : args_.hl_keys_ ) {
-                        if( not args_.blink_500ms || hl_key == nullptr ) break;
-                        
-                        if( crt_port.detail.contains( hl_key ) ) {
-                            selected |= true;
-                            break;
+                        for( const char* hl_key : args_.hl_keys_ ) {
+                            if( not args_.blink_500ms || hl_key == nullptr ) break;
+                            
+                            if( crt_port.detail.contains( hl_key ) ) {
+                                selected |= true;
+                                break;
+                            }
                         }
-                    }
-                    ImGui::SameLine(); ImGui::Bullet();
-                    if( ImGui::Selectable( crt_port.detail.c_str(), selected, static_cast< ImGuiSelectableFlags_ >( selectable_flags ) ) ) {
-                        
-                    }
-                ImGui::Separator();
+                        ImGui::SameLine(); ImGui::Bullet();
+                        if( ImGui::Selectable( crt_port.detail.c_str(), selected, static_cast< ImGuiSelectableFlags_ >( selectable_flags ) ) ) {
+                            
+                        }
+                    ImGui::Separator();
+                ImGui::PopID();
             }
         } else {
             ImGui::Separator();
