@@ -34,18 +34,23 @@ static status_t _populate_ports( COM_ports::container_t& ports_, COM_PORT_FILTER
     char buffer[ 256 ];
 
     for( int n = 0; SetupDiEnumDeviceInfo( dev_set, n, &dev_data ); ++n ) {
-        if( !SetupDiGetDeviceRegistryPropertyA( dev_set, &dev_data, SPDRP_FRIENDLYNAME, NULL, ( PBYTE )buffer, sizeof( buffer ), NULL ) ) continue;
+        COM_port_t port{ .id = "COM", .detail = RGH_NA };
 
-        auto& port = ports_.emplace_back( COM_port_t{ 
-            .id     = "COM", 
-            .detail = buffer
-        } );
-        
+        if( !SetupDiGetDeviceRegistryPropertyA( dev_set, &dev_data, SPDRP_FRIENDLYNAME, NULL, ( PBYTE )buffer, sizeof( buffer ), NULL ) ) continue;
         char* last_occ = nullptr;
         char* ptr      = nullptr;
         while( (ptr = strstr( last_occ ? last_occ : buffer, "COM" )) && last_occ < buffer + sizeof( buffer ) ) last_occ = ptr += 0x3;
-        
         if( last_occ ) while( *last_occ >= '0' && *last_occ <= '9' && last_occ < buffer + sizeof( buffer ) ) port.id += *( last_occ++ );
+
+        if( !SetupDiGetDeviceRegistryPropertyA( dev_set, &dev_data, SPDRP_HARDWAREID, NULL, ( PBYTE )buffer, sizeof( buffer ), NULL ) ) {
+            const char* vid = strstr( buffer, "VID_" );
+            const char* pid = strstr( buffer, "PID_" );
+            if( vid && pid ) {
+                port.detail = std::format( "{}:{}", std::string_view{ vid+4, 4 }, std::string_view{ pid+4, 4 } );
+            }
+        }
+
+        ports_.emplace_back( std::move( port ) );
     }
 
     SetupDiDestroyDeviceInfoList( dev_set );
