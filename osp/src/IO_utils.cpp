@@ -42,7 +42,7 @@ static status_t _populate_ports( COM_ports::container_t& ports_, COM_PORT_FILTER
         while( (ptr = strstr( last_occ ? last_occ : buffer, "COM" )) && last_occ < buffer + sizeof( buffer ) ) last_occ = ptr += 0x3;
         if( last_occ ) while( *last_occ >= '0' && *last_occ <= '9' && last_occ < buffer + sizeof( buffer ) ) port.id += *( last_occ++ );
 
-        if( !SetupDiGetDeviceRegistryPropertyA( dev_set, &dev_data, SPDRP_HARDWAREID, NULL, ( PBYTE )buffer, sizeof( buffer ), NULL ) ) {
+        if( SetupDiGetDeviceRegistryPropertyA( dev_set, &dev_data, SPDRP_HARDWAREID, NULL, ( PBYTE )buffer, sizeof( buffer ), NULL ) ) {
             const char* vid = strstr( buffer, "VID_" );
             const char* pid = strstr( buffer, "PID_" );
             if( vid && pid ) {

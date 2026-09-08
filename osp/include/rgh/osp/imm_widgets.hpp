@@ -122,7 +122,7 @@ public:
                             }
                         }
                         ImGui::SameLine(); ImGui::Bullet();
-                        if( ImGui::Selectable( crt_port.detail.c_str(), selected, static_cast< ImGuiSelectableFlags_ >( selectable_flags ) ) ) {
+                        if( ImGui::Selectable( std::format( "{} - {}", crt_port.id, crt_port.detail ).c_str(), selected, static_cast< ImGuiSelectableFlags_ >( selectable_flags ) ) ) {
                             
                         }
                     ImGui::Separator();
