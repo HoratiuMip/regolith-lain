@@ -1,4 +1,4 @@
-#pragma once /*
+/*
 # FILE: brp/IO_utils.cpp
 # AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
 #   Copyright (c) [2024-2026]. All rights reserved.

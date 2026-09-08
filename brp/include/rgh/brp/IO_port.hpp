@@ -78,15 +78,37 @@ struct port_W_desc_t {
     }
 };
 
+struct port_timeout_desc_t {
+    int   per_Tx_ms   = 0;
+    int   per_Rx_ms   = 0;
+};
+
 class Port {
 public:
+    virtual ~Port( void ) {} 
+
+public:
     virtual status_t read( 
-        RGH_IN_OUT   const port_R_desc_t&   desc_ 
+        RGH_IN_OUT   const port_R_desc_t& 
     ) = 0;
 
     virtual status_t write( 
-        RGH_IN_OUT   const port_W_desc_t&   desc_ 
+        RGH_IN_OUT   const port_W_desc_t& 
     ) = 0;
+
+public:
+    /**
+     * @returns Whether this port has its peer connected.
+     */
+    virtual bool has_link( void ) const { return false; }
+
+public:
+    virtual ret_t set_timeout(
+        RGH_IN   const port_timeout_desc_t&
+    ) { 
+        return RGH_ERR_NOT_IMPL;
+    }
+    inline ret_t operator () ( const port_timeout_desc_t& timeo_desc_ ) { return this->set_timeout( timeo_desc_ ); }
 };
 
 

@@ -6,7 +6,9 @@
 
 # ===== regolith-lain BAS begin =====
 # Location of regolith-lain.
-set( RGH_ROOT_DIR "$ENV{RGH_ROOT_DIR}" )
+if( NOT DEFINED RGH_ROOT_DIR )
+    set( RGH_ROOT_DIR "$ENV{RGH_ROOT_DIR}" )
+endif()
 include( "${RGH_ROOT_DIR}/tools.cmake" )
 
 # Build target plate.
@@ -21,7 +23,7 @@ set( RGH_TARGET_PLATE "" )
 # - uCp:
 #   - <empty>
 #   - "FreeRTOS"
-set( RGH_TARGET_OS "" ) 
+set( RGH_TARGET_OS ${CMAKE_SYSTEM_NAME} ) 
 
 # Target platform.
 # - OSp:

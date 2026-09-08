@@ -14,6 +14,33 @@
 
 namespace rgh::io { 
 
+class IPv4_socket : public Port {
+#ifdef RGH_TARGET_OS_WINDOWS
+public:
+    inline static constexpr ::SOCKET   INVAL_SOCKFD   = INVALID_SOCKET;
+_RGH_PROTECTED:
+    ::SOCKET   _fdsock   = INVAL_SOCKFD;
+#elifdef RGH_TARGET_OS_LINUX
+public:
+    inline static constexpr int   INVAL_SOCKFD   = -1;
+_RGH_PROTECTED:
+    int   _fdsock   = INVAL_SOCKFD;
+#endif//# RGH_TARGET_OS
+
+_RGH_PROTECTED:
+    struct _link_state_t {
+        std::atomic< bool >   alive   = { false };
+        ipv4_endpoint_t       endp    = {};
+    } _link_state;
+
+public:
+    virtual ret_t uplink( const ipv4_endpoint_t& );
+    virtual ret_t downlink( void );
+
+public:
+    virtual ret_t set_timeout( const port_timeout_desc_t& ) override;
+};
+
 class IPv4_TCP_socket : public Port {
 #ifdef RGH_TARGET_OS_WINDOWS
 

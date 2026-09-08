@@ -9,10 +9,74 @@
 
 namespace rgh::io {
 
+#pragma region IPv4_socket
+RGH_IMPL_FNC ret_t IPv4_socket::set_timeout( const port_timeout_desc_t& timeo_desc_ ) {
+    ret_t ret = RGH_OK;
+#ifdef RGH_TARGET_OS_WINDOWS
+    const DWORD sndtimeo = static_cast< DWORD >( timeo_desc_.per_Tx_ms );
+    const DWORD rcvtimeo = static_cast< DWORD >( timeo_desc_.per_Rx_ms );
+
+    auto sndtimeo_p = reinterpret_cast< const char* >( &sndtimeo );
+    auto rcvtimeo_p = reinterpret_cast< const char* >( &rcvtimeo );
+#elifdef RGH_TARGET_OS_LINUX
+    const timeval sndtimeo = { .tv_sec  = 0, .tv_usec = timeo_desc_.per_Tx_ms * 1000 };
+    const timeval rcvtimeo = { .tv_sec = 0, .tv_usec = timeo_desc_.per_Rx_ms * 1000 };
+
+    auto sndtimeo_p = reinterpret_cast< const void* >( &sndtimeo );
+    auto rcvtimeo_p = reinterpret_cast< const void* >( &rcvtimeo );
+#else
+    return RGH_ERR_NOT_IMPL;
+#endif
+     RGH_ASSERT_OR( 0 == ::setsockopt( _fdsock, SOL_SOCKET, SO_SNDTIMEO, sndtimeo_p, sizeof( sndtimeo ) ) ) {
+        RGH_BRDG_LOGE( "ipv4sock: set Tx timeout." );
+        ret = RGH_ERR_SYSCALL;
+    }
+    RGH_ASSERT_OR( 0 == ::setsockopt( _fdsock, SOL_SOCKET, SO_RCVTIMEO, rcvtimeo_p, sizeof( rcvtimeo ) ) ) {
+        RGH_BRDG_LOGE( "ipv4sock: set Rx timeout." );
+        ret = RGH_ERR_SYSCALL;
+    }
+
+    return ret;
+}
+
+RGH_IMPL_FNC ret_t IPv4_socket::uplink( const ipv4_endpoint_t& endp_ ) {
+    // _fdsock = socket( AF_INET, endp_.proto, 0 );
+    // RGH_ASSERT_OR( _fdsock != INVAL_SOCKFD ) {
+    //     RGH_LOGE_EX( RGH_ERR_SYSCALL, "inval sock {}:{}.", _CAGP ); return RGH_ERR_SYSCALL;
+    //     RGH_BRDG_LOGE( )
+    // }
+
+    // RGH_ON_SCOPE_EXIT_L( [ &sock ] -> void { ::closesocket( sock ); } );
+
+    // sockaddr_in desc = {};
+    // ZeroMemory( &desc, sizeof( sockaddr_in ) );
+
+    // desc.sin_family      = AF_INET;
+    // desc.sin_addr.s_addr = _conn.addr;
+    // desc.sin_port        = htons( _conn.port ); 
+    
+    // RGH_LOGI( "Connecting {}:{}...", _CAGP );
+    // RGH_ASSERT_OR( 0x0 == ::connect( sock, ( sockaddr* )&desc, sizeof( sockaddr_in ) ) ) {
+    //     RGH_LOGE_EX( RGH_ERR_SYSCALL, "Bad connect {}:{}.", _CAGP ); return RGH_ERR_SYSCALL;
+    // }
+
+    // _sock = sock;
+
+    // if( 0 != config_.timeouts.outbound_s && 0 != config_.timeouts.inbound_s )
+    //     this->timeouts( config_.timeouts );
+
+    // _conn.alive.store( true, std::memory_order_release );
+
+    // RGH_LOGI( "Connected {}:{}.", _CAGP );
+    // RGH_ON_SCOPE_EXIT_DROP;
+    return RGH_OK;
+}
+#pragma endregion IPv4_socket
+
 #define _CAGP _conn.addr_str.c_str(), _conn.port
 
 #ifdef RGH_TARGET_OS_WINDOWS
-#error "IO sockets for windows not brought up to date yet."
+#warning "IO sockets for windows not brought up to date yet."
 
 RGH_IMPL_FNC status_t IPv4_TCP_socket::bind( ipv4_addr_t addr_, ipv4_port_t port_ ) {
     RGH_ASSERT_OR( false ==_conn.alive.load( std::memory_order_acquire ) ) {

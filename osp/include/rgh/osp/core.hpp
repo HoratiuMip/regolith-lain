@@ -218,6 +218,14 @@ struct on_scope_exit_l_t {
 
 #define RGH_UNREACHABLE std::unreachable()
 
+#ifdef RGH_TARGET_OS_LINUX
+    #define RGH_LAST_ERROR_MSG (std::error_code( errno, std::generic_category{} ).message())
+#elifdef RGH_TARGET_OS_WINDOWS
+    #define RGH_LAST_ERROR_MSG (std::error_code( static_cast< int >( ::GetLastError() ), std::system_category() ).message())
+#else
+    #define RGH_LAST_ERROR_MSG ("unknown error code")
+#endif
+
 };
 
 

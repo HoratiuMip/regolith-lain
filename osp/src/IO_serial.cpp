@@ -305,77 +305,12 @@ status_t Serial::purge( void ) const {
 
 #pragma region Fasttrack_serial
 
-RGH_IMPL_FNC status_t Fasttrack_serial::open( 
-    RGH_IN   const char*              device_, 
-    RGH_IN   const serial_config_t&   config_,
-    RGH_IN   bytes_cb_t               bytes_cb_
-) noexcept {
-    RGH_ASSERT_STATUS_OR_RET( this->Serial::open( device_, config_ ) );
-    _bytes_cb = std::move( bytes_cb_ );
-    _poll_th = std::jthread{ &Fasttrack_serial::_poll_loop, this };
-    RGH_BRDG_LOGI( "ft_serial: poll loop entered on {}.", _device );
-    return RGH_OK;
-}
+#ifdef RGH_TARGET_OS_WINDOWS
 
-#if defined( RGH_TARGET_OS_WINDOWS )
+#elifdef RGH_TARGET_OS_LINUX
 
-/*
-# CAUTION: GENERATED FOR QUICK DEMAND. NOT CHECKED OR VALIDATED.
-*/
-RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
-    RGH_IN_OUT   std::stop_token stop_tok_
-) noexcept {
-    /* Block in WaitCommEvent until a byte lands on the RX line. */
-    RGH_ASSERT_OR( SetCommMask( _port, EV_RXCHAR ) ) {
-        RGH_BRDG_LOGE( "ft_serial: could not set comm mask on {}, error code [{}].", _device, GetLastError() );
-        return;
-    }
-
-    /*
-     * The port is a synchronous handle, so WaitCommEvent/ReadFile block this
-     * thread. A stop request has to reach in from the outside: clearing the
-     * event mask makes a pending WaitCommEvent return at once, and CancelIoEx
-     * aborts a read that is already in flight.
-     */
-    std::stop_callback stop_cb{ stop_tok_, [ this ] ( void ) -> void {
-        SetCommMask( _port, 0x0 );
-        CancelIoEx( _port, nullptr );
-    } };
-
-    while( not stop_tok_.stop_requested() ) {
-        DWORD evt_mask = 0x0;
-
-        RGH_ASSERT_OR( WaitCommEvent( _port, &evt_mask, nullptr ) ) {
-            const DWORD err = GetLastError();
-            if( err == ERROR_OPERATION_ABORTED ) break;
-            RGH_BRDG_LOGE( "ft_serial: bad WaitCommEvent on {}: error code [{}].", _device, err );
-            break;
-        }
-
-        if( stop_tok_.stop_requested() ) break;
-        if( ( evt_mask & EV_RXCHAR ) == 0x0 ) continue;
-
-        /* Drain whatever is buffered, handing it to the user in <=1024B chunks. */
-        for( int avail; ( avail = this->rx_available() ) > 0; ) {
-            int buffer_sz = std::min( avail, 1024 );
-            byte_t buffer[ 1024 ];
-
-            RGH_ASSERT_STATUS_OR( this->read( {
-                .dst_ptr    = buffer,
-                .dst_n      = buffer_sz,
-                .byte_count = &buffer_sz
-            } ) ) break;
-
-            if( buffer_sz <= 0 ) break;
-            this->_bytes_cb( buffer, buffer_sz );
-        }
-    }
-
-    RGH_BRDG_LOGW( "ft_serial: poll loop exited on {}.", _device );
-}
-
-#elif defined( RGH_TARGET_OS_LINUX )
-
+#ifndef RGH_IMPL_SEL_IO_FASTTRACK_SERIAL__POLL_LOOP
+#define RGH_IMPL_SEL_IO_FASTTRACK_SERIAL__POLL_LOOP
 RGH_IMPL_FNC void Fasttrack_serial::_poll_loop( 
     RGH_IN_OUT   std::stop_token   stop_tok_ 
 ) noexcept {
@@ -415,8 +350,47 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
     }
     RGH_BRDG_LOGW( "ft_serial: poll loop exited on {}.", _device );
 }
+#endif//# RGH_IMPL_SEL_IO_FASTTRACK_SERIAL__POLL_LOOP
 
-#endif
+#endif//# RGH_TARGET_OS
+
+RGH_IMPL_FNC status_t Fasttrack_serial::open( 
+    RGH_IN   const char*              device_, 
+    RGH_IN   const serial_config_t&   config_,
+    RGH_IN   bytes_cb_t               bytes_cb_
+) noexcept {
+    RGH_ASSERT_STATUS_OR_RET( this->Serial::open( device_, config_ ) );
+    _bytes_cb = std::move( bytes_cb_ );
+    _poll_th = std::jthread{ &Fasttrack_serial::_poll_loop, this };
+    RGH_BRDG_LOGI( "ft_serial: poll loop entered on {}.", _device );
+    return RGH_OK;
+}
+
+#ifndef RGH_IMPL_SEL_IO_FASTTRACK_SERIAL__POLL_LOOP
+#define RGH_IMPL_SEL_IO_FASTTRACK_SERIAL__POLL_LOOP
+RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
+    RGH_IN_OUT   std::stop_token   stkn_
+) noexcept {
+    while( not stkn_.stop_requested() ) {
+        for( int avail; ( avail = this->rx_available() ) > 0; ) {
+            byte_t buf[ 0x400 ];
+
+            int buf_eff_len = std::min( avail, sizeof( buf ) );
+            RGH_ASSERT_STATUS_OR( this->read( {
+                .dst_ptr    = buf,
+                .dst_n      = buf_eff_len,
+                .byte_count = &buf_eff_len
+            } ) ) break;
+
+            RGH_ASSERT_OR( buf_eff_len > 0 ) break;
+            this->_bytes_cb( buf, buf_eff_len );
+        }
+        std::this_thread::sleep_for( std::chrono::milliseconds{ 100 } );
+    }
+
+    RGH_BRDG_LOGW( "ft_serial: poll loop exited on {}.", _device );
+}
+#endif//# RGH_IMPL_SEL_IO_FASTTRACK_SERIAL__POLL_LOOP
 
 #pragma endregion Fasttrack_serial
 
