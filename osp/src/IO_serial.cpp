@@ -375,7 +375,7 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
         for( int avail; ( avail = this->rx_available() ) > 0; ) {
             byte_t buf[ 0x400 ];
 
-            int buf_eff_len = std::min( avail, sizeof( buf ) );
+            int buf_eff_len = std::min( avail, static_cast< int >( sizeof( buf ) ) );
             RGH_ASSERT_STATUS_OR( this->read( {
                 .dst_ptr    = buf,
                 .dst_n      = buf_eff_len,
