@@ -50,6 +50,7 @@ public:
     struct frame_args_t : rgh::Immersive::frame_cb_args_t {
         IN       const char*                    scan_btn_lbl_   = "Scan for COM ports";
         IN       const char*                    no_ports_lbl_   = "No COM ports found.";
+        IN       const char*                    conn_btn_lbl_   = "Connect";
         IN_OPT   HVec< Task_taker >             tsk_tkr_        = nullptr;
         IN_OPT   std::array< const char*, 3 >   hl_keys_        = {};
     };
@@ -110,7 +111,7 @@ public:
                         bool selected         = false;
                     
                         ImGui::SameLine();
-                        if( ImGui::Button( "Connect" ) ) conn_to = &crt_port;
+                        if( ImGui::Button( args_.conn_btn_lbl_ ) ) conn_to = &crt_port;
                         if( ImGui::IsItemHovered() ) { selectable_flags |= ImGuiSelectableFlags_Highlight; }
 
                         for( const char* hl_key : args_.hl_keys_ ) {

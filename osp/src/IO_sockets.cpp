@@ -43,7 +43,7 @@ RGH_IMPL_FNC ret_t IPv4_socket::uplink( const ipv4_endpoint_t& endp_ ) {
     // _fdsock = socket( AF_INET, endp_.proto, 0 );
     // RGH_ASSERT_OR( _fdsock != INVAL_SOCKFD ) {
     //     RGH_LOGE_EX( RGH_ERR_SYSCALL, "inval sock {}:{}.", _CAGP ); return RGH_ERR_SYSCALL;
-    //     RGH_BRDG_LOGE( )
+    //     RGH_BRDG_LOGE( "bad sock fd for {}:{}.", )
     // }
 
     // RGH_ON_SCOPE_EXIT_L( [ &sock ] -> void { ::closesocket( sock ); } );
