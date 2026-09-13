@@ -239,6 +239,8 @@ public:
     typedef   std::function< status_t( const frame_cb_args_t& ) >   frame_callback_t;
     typedef   std::function< status_t( const init_cb_args_t&  ) >   init_callback_t;   
     typedef   std::function< void( const exit_cb_args_t& ) >        exit_callback_t; 
+
+    using frame_args_t = frame_cb_args_t;
       
 public:
     struct config_t {
