@@ -194,6 +194,8 @@ public:
 
         glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _rbo );
         glBindFramebuffer        ( GL_FRAMEBUFFER, GL_NONE );
+
+        return RGH_OK;
     }
 
     status_t upld( 

@@ -1,10 +1,11 @@
-#pragma once
-/**
- * @file: osp/IO_serial.hpp
- * @brief: 
- * @details:
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
+#pragma once /*
+# FILE: osp/IO_serial.hpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# DETAILS: Serial.
+*/
 
 #include <rgh/osp/core.hpp>
 
