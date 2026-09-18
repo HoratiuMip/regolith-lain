@@ -1,12 +1,20 @@
-/**
- * @file: osp/IO_serial.cpp
- * @brief: Implementation file.
- * @details: -
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
-
+/*
+# FILE: osp/IO_serial.cpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# DETAILS: Implementation file.
+*/
 #include <rgh/osp/IO_serial.hpp>
 
+#if (\
+!defined( RGH_FLAG_INSIDE_TERMUX ) \
+) 
+    #define _RGH_SOURCE_IS_COMPILABLE
+#endif
+
+#ifdef _RGH_SOURCE_IS_COMPILABLE
 #ifdef RGH_TARGET_OS_WINDOWS
 #elifdef RGH_TARGET_OS_LINUX
     #include <fcntl.h> 
@@ -395,3 +403,4 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
 #pragma endregion Fasttrack_serial
 
 }
+#endif//#_RGH_SOURCE_IS_COMPILABLE

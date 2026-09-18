@@ -1,15 +1,17 @@
-/**
- * @file: OSp/IO_utils.cpp
- * @brief: Implementation file.
- * @details: -
- * @authors: Vatca "Mipsan" Tudor-Horatiu
- */
+/*
+# FILE: osp/IO_utils.cpp
+# AUTHOR(s): Vatca "Mipsan" Tudor-Horatiu
+#   Copyright (c) [2024-2026]. All rights reserved.
+#   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
+#
+# DETAILS: Implementation file.
+*/
 #include <rgh/osp/IO_utils.hpp>
 
-#define _RGH_SOURCE_IS_COMPILABLE
-
-#if RGH_FLAG_INSIDE_TERMUX
-    #undef _RGH_SOURCE_IS_COMPILABLE
+#if (\
+!defined( RGH_FLAG_INSIDE_TERMUX ) \
+) 
+    #define _RGH_SOURCE_IS_COMPILABLE
 #endif
 
 #ifdef _RGH_SOURCE_IS_COMPILABLE
