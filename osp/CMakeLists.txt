@@ -30,15 +30,19 @@ RGH_Fnc_PopExcom( "OpenGL" )
 if( RGH_Flag_ExcomActive )
     target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_OPENGL )
 
-    set( GLFW_INSTALL OFF CACHE BOOL "" FORCE )
-
     RGH_Fnc_CloneRepo( "https://github.com/g-truc/glm.git" "1.0.1" glm "${_excom_dir}" )
+
+    set( GLFW_INSTALL OFF CACHE BOOL "" FORCE )
+    if( RGH_Flag_InsideTermux )
+        set( GLFW_BUILD_X11 ON CACHE BOOL "" FORCE )
+    endif()
     RGH_Fnc_CloneRepo( "https://github.com/glfw/glfw.git" "3.4" glfw "${_excom_dir}" )
 
     set( CMAKE_POLICY_VERSION_MINIMUM 3.5 )
     set( glew-cmake_BUILD_SHARED OFF )
     set( ONLY_LIBS ON )
     RGH_Fnc_CloneRepo( "https://github.com/Perlmint/glew-cmake.git" "glew-cmake-2.2.0" glew "${_excom_dir}" )
+
     target_link_libraries( RGH_OSp
         PUBLIC glm
         PUBLIC glfw
