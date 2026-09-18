@@ -403,4 +403,6 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
 #pragma endregion Fasttrack_serial
 
 }
+#else
+    #warning "[RGH] This source file is not compilable."
 #endif//#_RGH_SOURCE_IS_COMPILABLE
