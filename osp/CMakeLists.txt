@@ -3,6 +3,8 @@ cmake_minimum_required( VERSION 3.28.0 )
 ## EXCOM dependencies.
 set( _excom_dir "${CMAKE_CURRENT_LIST_DIR}/excom" )
 
+find_package( PkgConfig REQUIRED )
+
 ## Build RGH.
 file( GLOB _source_files "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp" )
 add_library( RGH_OSp STATIC ${_source_files} )
@@ -32,11 +34,7 @@ if( RGH_Flag_ExcomActive )
 
     RGH_Fnc_CloneRepo( "https://github.com/g-truc/glm.git" "1.0.1" glm "${_excom_dir}" )
 
-    set( GLFW_INSTALL OFF CACHE BOOL "" FORCE )
-    if( RGH_Flag_InsideTermux )
-        set( GLFW_BUILD_X11 ON CACHE BOOL "" FORCE )
-    endif()
-    RGH_Fnc_CloneRepo( "https://github.com/glfw/glfw.git" "3.4" glfw "${_excom_dir}" )
+    pkg_check_modules( GLFW REQUIRED glfw3 )
 
     set( CMAKE_POLICY_VERSION_MINIMUM 3.5 )
     set( glew-cmake_BUILD_SHARED OFF )
@@ -45,12 +43,12 @@ if( RGH_Flag_ExcomActive )
 
     target_link_libraries( RGH_OSp
         PUBLIC glm
-        PUBLIC glfw
+        PUBLIC ${GLFW_LIBRARIES}
         PUBLIC libglew_static
     )
     target_include_directories( RGH_OSp
         PUBLIC "${_excom_dir}/glm"
-        PUBLIC "${_excom_dir}/glfw/include"
+        PUBLIC ${GLFW_INCLUDE_DIRS}
         PUBLIC "${_excom_dir}/glew/include"
     )
 endif()
