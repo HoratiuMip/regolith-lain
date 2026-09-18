@@ -8,6 +8,11 @@
 
 #define _RGH_SOURCE_IS_COMPILABLE
 
+#if RGH_FLAG_INSIDE_TERMUX
+    #undef _RGH_SOURCE_IS_COMPILABLE
+#endif
+
+#ifdef _RGH_SOURCE_IS_COMPILABLE
 #ifdef RGH_TARGET_OS_WINDOWS
 
 #elifdef RGH_TARGET_OS_LINUX
@@ -20,11 +25,6 @@
     #include <expected>
 #endif
 
-#if RGH_FLAG_INSIDE_TERMUX
-    #undef _RGH_SOURCE_IS_COMPILABLE
-#endif
-
-#ifdef _RGH_SOURCE_IS_COMPILABLE
 namespace rgh::io {
 
 static status_t _populate_ports( COM_ports::container_t& ports_, COM_PORT_FILTER_ filter_ ) {

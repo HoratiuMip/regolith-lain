@@ -90,7 +90,7 @@ struct ntp_packet_t {
             uint8_t   VN   : 3;
             uint8_t   LI   : 2;
         };
-        uint8_t B0;
+        uint8_t byte_0;
     };
     uint8_t    stratum;
     uint8_t    poll;
