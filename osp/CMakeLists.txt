@@ -35,6 +35,7 @@ if( RGH_Flag_ExcomActive )
     RGH_Fnc_CloneRepo( "https://github.com/g-truc/glm.git" "1.0.1" glm "${_excom_dir}" )
     RGH_Fnc_CloneRepo( "https://github.com/glfw/glfw.git" "3.4" glfw "${_excom_dir}" )
 
+    set( CMAKE_POLICY_VERSION_MINIMUM 3.5 )
     set( glew-cmake_BUILD_SHARED OFF )
     set( ONLY_LIBS ON )
     RGH_Fnc_CloneRepo( "https://github.com/Perlmint/glew-cmake.git" "glew-cmake-2.2.0" glew "${_excom_dir}" )
@@ -132,9 +133,16 @@ if( RGH_Flag_ExcomActive )
     target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui_node_editor/" )
 
     file( GLOB _imgui_spinners_source_files "${_excom_dir}/imgui_spinners/*.cpp" )
-    add_library( ImSpinners STATIC ${_imgui_spinners_source_files} )
-    target_include_directories( ImSpinners PUBLIC "${_excom_dir}/imgui/" )
-    target_include_directories( ImSpinners PUBLIC "${_excom_dir}/imgui_spinners/" )
+    if( NOT _imgui_spinners_source_files STREQUAL "" ) 
+        add_library( ImSpinners STATIC ${_imgui_spinners_source_files} )
+        set( _imgui_spinners_include_type PUBLIC )
+    else()
+        add_library( ImSpinners INTERFACE )
+        set( _imgui_spinners_include_type INTERFACE )
+    endif()
+    target_include_directories( ImSpinners ${_imgui_spinners_include_type} "${_excom_dir}/imgui/" )
+    target_include_directories( ImSpinners ${_imgui_spinners_include_type} "${_excom_dir}/imgui_spinners/" )
+
 
     add_library( One_ImGui INTERFACE )
     target_link_libraries( One_ImGui INTERFACE
