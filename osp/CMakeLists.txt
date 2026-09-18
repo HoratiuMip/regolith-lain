@@ -3,6 +3,7 @@ cmake_minimum_required( VERSION 3.28.0 )
 ## EXCOM dependencies.
 set( _excom_dir "${CMAKE_CURRENT_LIST_DIR}/excom" )
 
+include( FetchContent )
 find_package( PkgConfig REQUIRED )
 
 ## Build RGH.
@@ -39,7 +40,13 @@ if( RGH_Flag_ExcomActive )
     set( CMAKE_POLICY_VERSION_MINIMUM 3.5 )
     set( glew-cmake_BUILD_SHARED OFF )
     set( ONLY_LIBS ON )
-    RGH_Fnc_CloneRepo( "https://github.com/Perlmint/glew-cmake.git" "glew-cmake-2.2.0" glew "${_excom_dir}" )
+    FetchContent_Declare(
+        glew
+        GIT_REPOSITORY https://github.com/Perlmint/glew-cmake.git
+        GIT_TAG glew-cmake-2.2.0
+        EXCLUDE_FROM_ALL
+    )
+    FetchContent_MakeAvailable( glew )
 
     target_link_libraries( RGH_OSp
         PUBLIC glm
@@ -49,7 +56,6 @@ if( RGH_Flag_ExcomActive )
     target_include_directories( RGH_OSp
         PUBLIC "${_excom_dir}/glm"
         PUBLIC ${GLFW_INCLUDE_DIRS}
-        PUBLIC "${_excom_dir}/glew/include"
     )
 endif()
 # STB
