@@ -90,6 +90,8 @@ endif()
 RGH_Fnc_PopExcom( "Dear ImGUI" )
 if( RGH_Flag_ExcomActive )
     target_compile_definitions( RGH_OSp PUBLIC RGH_EXCOM_DEARIMGUI )
+    
+    add_library( One_ImGui INTERFACE )
 
     RGH_Fnc_CloneRepo( "https://github.com/ocornut/imgui.git" "v1.91.9-docking" imgui "${_excom_dir}" )
     RGH_Fnc_CloneRepo( "https://github.com/epezent/implot.git" "v0.16" implot "${_excom_dir}" )
@@ -127,10 +129,14 @@ if( RGH_Flag_ExcomActive )
     target_include_directories( ImKnobs PUBLIC "${_excom_dir}/imgui/" )
     target_include_directories( ImKnobs PUBLIC "${_excom_dir}/imgui_knobs/" )
 
-    # file( GLOB _imgui_node_editor_source_files "${_excom_dir}/imgui_node_editor/*.cpp" )
-    # add_library( ImNodeEditor STATIC ${_imgui_node_editor_source_files} )
-    # target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui/" )
-    # target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui_node_editor/" )
+    if( NOT RGH_Flag_InsideTermux )
+        file( GLOB _imgui_node_editor_source_files "${_excom_dir}/imgui_node_editor/*.cpp" )
+        add_library( ImNodeEditor STATIC ${_imgui_node_editor_source_files} )
+        target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui/" )
+        target_include_directories( ImNodeEditor PUBLIC "${_excom_dir}/imgui_node_editor/" )
+
+        target_link_libraries( One_ImGui INTERFACE ImNodeEditor )
+    endif()
 
     file( GLOB _imgui_spinners_source_files "${_excom_dir}/imgui_spinners/*.cpp" )
     if( NOT _imgui_spinners_source_files STREQUAL "" ) 
@@ -144,16 +150,13 @@ if( RGH_Flag_ExcomActive )
     target_include_directories( ImSpinners ${_imgui_spinners_include_type} "${_excom_dir}/imgui_spinners/" )
 
 
-    add_library( One_ImGui INTERFACE )
     target_link_libraries( One_ImGui INTERFACE
         ImGui
         ImPlot
         ImFileDialog
         ImKnobs
-        ImNodeEditor
         ImSpinners
     )
-
     target_link_libraries( RGH_OSp
         PUBLIC One_ImGui
     )
@@ -204,9 +207,13 @@ if( RGH_Opt_TargetOS_Windows )
 elseif( RGH_Opt_TargetOS_Linux )
     target_compile_definitions( RGH_OSp PUBLIC RGH_TARGET_OS_LINUX )
 
-    target_link_libraries( RGH_OSp 
-        PUBLIC "-ludev"
-    )
+    if( RGH_Flag_InsideTermux )
+        target_compile_definitions( RGH_OSp PUBLIC RGH_FLAG_INSIDE_TERMUX )
+    else()
+        target_link_libraries( RGH_OSp 
+            PUBLIC "-ludev"
+        )
+    endif()
 endif()
 
 add_library( rgh::libosp ALIAS RGH_OSp )

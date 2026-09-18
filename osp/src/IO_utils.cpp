@@ -4,8 +4,9 @@
  * @details: -
  * @authors: Vatca "Mipsan" Tudor-Horatiu
  */
-
 #include <rgh/osp/IO_utils.hpp>
+
+#define _RGH_SOURCE_IS_COMPILABLE
 
 #ifdef RGH_TARGET_OS_WINDOWS
 
@@ -19,6 +20,11 @@
     #include <expected>
 #endif
 
+#if RGH_FLAG_INSIDE_TERMUX
+    #undef _RGH_SOURCE_IS_COMPILABLE
+#endif
+
+#ifdef _RGH_SOURCE_IS_COMPILABLE
 namespace rgh::io {
 
 static status_t _populate_ports( COM_ports::container_t& ports_, COM_PORT_FILTER_ filter_ ) {
@@ -278,4 +284,7 @@ RGH_IMPL_FNC std::expected< ntp_packet_t, ret_t > ntp_get( Port& port_, bool mak
     return packet;
 }
 
-}
+}//#namespace rgh::io
+#else
+    #warning "[RGH] This source file is not compilable."
+#endif//#_RGH_SOURCE_IS_COMPILABLE

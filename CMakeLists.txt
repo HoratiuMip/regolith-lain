@@ -34,6 +34,19 @@ option( RGH_Opt_TargetOS_Windows OFF )
 option( RGH_Opt_TargetOS_Linux OFF )
 option( RGH_Opt_TargetOS_FreeRTOS OFF )
 
+option( RGH_Flag_InsideTermux OFF )
+
+# Check if we are inside a Termux environment.
+if( DEFINED ENV{TERMUX_VERSION} )
+    set( RGH_Flag_InsideTermux ON )
+
+    if( NOT DEFINED RGH_TARGET_OS )
+        set( RGH_TARGET_OS "Linux" )
+    endif()
+
+    message( STATUS "[RGH] Detected Termux environment." )
+endif()
+
 # Place this auto OS deduce here so we can also deduce the plate.
 if( NOT DEFINED RGH_TARGET_OS )
     set( RGH_TARGET_OS ${CMAKE_SYSTEM_NAME} )
