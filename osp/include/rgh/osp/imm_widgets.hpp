@@ -7,7 +7,7 @@
  */
 
 #include <rgh/osp/immersive.hpp>
-#include <rgh/osp/IO_utils.hpp>
+#include <rgh/osp/IO_serial_utils.hpp>
 #include <rgh/osp/thread_pool.hpp>
 
 namespace rgh::imm_widgets {
