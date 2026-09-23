@@ -77,7 +77,7 @@ RGH_IMPL_FNC ret_t IPv4_socket::uplink( const ipv4_endpoint_t& endp_ ) {
 
 #ifdef RGH_TARGET_OS_WINDOWS
 #warning "IO sockets for windows not brought up to date yet."
-
+/*
 RGH_IMPL_FNC status_t IPv4_TCP_socket::bind( ipv4_addr_t addr_, ipv4_port_t port_ ) {
     RGH_ASSERT_OR( false ==_conn.alive.load( std::memory_order_acquire ) ) {
         RGH_LOGE_INT( 
@@ -244,6 +244,7 @@ RGH_IMPL_FNC status_t IPv4_TCP_socket::holding_rx( int* bc_ ) {
     *bc_ = (int)bc;
     return RGH_OK;
 }
+*/
 
 #elifdef RGH_TARGET_OS_LINUX
 
