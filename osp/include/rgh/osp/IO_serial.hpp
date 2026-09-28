@@ -98,7 +98,7 @@ public:
     /**
      * @brief: Returns the number of bytes waiting to be read from the reception buffer.
      */
-    int rx_available( void ) const;
+    int rx_q_sz( void ) const;
 
     /**
      * @brief: Clear the transmission and reception buffers.

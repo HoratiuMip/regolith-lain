@@ -20,7 +20,6 @@
 
 namespace rgh::io {
 
-//# A convenient wrapper over getaddrinfo(). See https://man7.org/linux/man-pages/man3/getaddrinfo.3.html.
 RGH_IMPL_FNC std::expected< std::vector< ipv4_addr_t >, ret_t > ipv4_hosts_of( std::string_view domain_ ) noexcept {
     RGH_ASSERT_OR( not domain_.empty() ) {
         RGH_BRDG_LOGE( "ipv4 hosts of: no domain provided." );
@@ -53,7 +52,6 @@ RGH_IMPL_FNC std::expected< std::vector< ipv4_addr_t >, ret_t > ipv4_hosts_of( s
 #endif
 }
 
-//# Request an NTP packet on the given port.
 RGH_IMPL_FNC std::expected< ntp_packet_t, ret_t > ntp_get( Port& port_, bool make_unix_ ) noexcept {
     auto packet = ntp_packet_t::client_request();
 

@@ -28,7 +28,7 @@ namespace rgh::io {
 
 #pragma region Serial
 #ifdef RGH_TARGET_OS_WINDOWS
-status_t Serial::open( const char* device_, const serial_config_t& config_ ) {
+ret_t Serial::open( const char* device_, const serial_config_t& config_ ) {
     if( _port != SERIAL_INVALID_HANDLE ) this->close();
 
     _port = CreateFileA( device_, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
@@ -90,7 +90,7 @@ status_t Serial::open( const char* device_, const serial_config_t& config_ ) {
     return 0x0;
 }
 
-status_t Serial::close( void ) {
+ret_t Serial::close( void ) {
     if( _port == SERIAL_INVALID_HANDLE ) return 0x0;
     
     if( _config.purge_on_close ) this->purge();
@@ -101,7 +101,7 @@ status_t Serial::close( void ) {
     return 0x0;
 }
 
-status_t Serial::read( const port_R_desc_t& desc_ ) {
+ret_t Serial::read( const port_R_desc_t& desc_ ) {
     uint32_t byte_count = 0;
     ReadFile( _port, desc_.dst_ptr, desc_.dst_n, ( LPDWORD )&byte_count, nullptr );
     
@@ -114,7 +114,7 @@ status_t Serial::read( const port_R_desc_t& desc_ ) {
     return RGH_OK;
 }
 
-status_t Serial::write( const port_W_desc_t& desc_ ) {
+ret_t Serial::write( const port_W_desc_t& desc_ ) {
     uint32_t byte_count = 0;
     WriteFile( _port, desc_.src_ptr, desc_.src_n, ( LPDWORD )&byte_count, nullptr );
 
@@ -127,13 +127,13 @@ status_t Serial::write( const port_W_desc_t& desc_ ) {
     return 0x0;
 }
 
-int Serial::rx_available( void ) const {
+int Serial::rx_q_sz( void ) const {
     COMSTAT stat; memset( &stat, 0x0, sizeof( COMSTAT ) );
     RGH_ASSERT_OR( ClearCommError( _port, nullptr, &stat ) ) return -0x1;
     return stat.cbInQue;
 }
 
-status_t Serial::purge( void ) const {
+ret_t Serial::purge( void ) const {
     RGH_ASSERT_OR( PurgeComm( _port, PURGE_RXABORT | PURGE_TXABORT | PURGE_RXCLEAR | PURGE_TXCLEAR ) ) {
         RGH_LOGW_IO( "Could not purge serial port \"{}\", error code [{}].", _device, GetLastError() );
         return -0x1;
@@ -162,7 +162,7 @@ static constexpr speed_t _baud4termios( uint32_t baud_ ) noexcept {
     RGH_UNREACHABLE;
 }
 
-status_t Serial::open( 
+ret_t Serial::open( 
     RGH_IN   const char*              device_, 
     RGH_IN   const serial_config_t&   config_ ) 
 {
@@ -247,7 +247,7 @@ status_t Serial::open(
     return RGH_OK;
 }
 
-status_t Serial::close( void ) {
+ret_t Serial::close( void ) {
     RGH_ASSERT_OR( this->is_connected() ) return RGH_OK;
 
     if( _config.purge_on_close ) {
@@ -267,7 +267,7 @@ status_t Serial::close( void ) {
     return RGH_OK;
 }
 
-status_t Serial::read( const port_R_desc_t& desc_ ) {
+ret_t Serial::read( const port_R_desc_t& desc_ ) {
     ssize_t bc = ::read( _port, desc_.dst_ptr, desc_.dst_n );
 
     RGH_ASSERT_OR( bc >= 0 ) {
@@ -277,12 +277,12 @@ status_t Serial::read( const port_R_desc_t& desc_ ) {
 
 l_ok:
     desc_.set_bc( bc );
-    if( desc_.req_all and bc != desc_.dst_n ) return RGH_ERR_DEPLETED;
+    if( desc_.req_all and bc != desc_.dst_n ) return RGH_ERR_PARTIAL;
     
     return RGH_OK;
 }
 
-status_t Serial::write( const port_W_desc_t& desc_ ) {
+ret_t Serial::write( const port_W_desc_t& desc_ ) {
     ssize_t bc = ::write( _port, desc_.src_ptr, desc_.src_n );
 
     RGH_ASSERT_OR( bc >= 0 ) {
@@ -297,13 +297,13 @@ l_ok:
     return RGH_OK;
 }
 
-int Serial::rx_available( void ) const {
+int Serial::rx_q_sz( void ) const {
     int bca = 0;
     RGH_ASSERT_OR( ::ioctl( _port, FIONREAD, &bca ) >= 0x0 ) return 0;
     return bca;
 }
 
-status_t Serial::purge( void ) const {
+ret_t Serial::purge( void ) const {
     RGH_ASSERT_OR( ::tcflush( _port, TCIOFLUSH ) == 0 ) return RGH_ERR_SYSCALL;
     return RGH_OK;
 }
@@ -338,7 +338,7 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
 
             RGH_ASSERT_OR( pfd.revents & POLLIN ) continue;
 
-            int buffer_sz = std::min( this->rx_available(), 1024 );
+            int buffer_sz = std::min( this->rx_q_sz(), 1024 );
             byte_t buffer[ buffer_sz ];
             RGH_ASSERT_STATUS_OR( this->read( {
                 .dst_ptr    = buffer,
@@ -362,7 +362,7 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
 
 #endif//# RGH_TARGET_OS
 
-RGH_IMPL_FNC status_t Fasttrack_serial::open( 
+RGH_IMPL_FNC ret_t Fasttrack_serial::open( 
     RGH_IN   const char*              device_, 
     RGH_IN   const serial_config_t&   config_,
     RGH_IN   bytes_cb_t               bytes_cb_
@@ -380,7 +380,7 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
     RGH_IN_OUT   std::stop_token   stkn_
 ) noexcept {
     while( not stkn_.stop_requested() ) {
-        for( int avail; ( avail = this->rx_available() ) > 0; ) {
+        for( int avail; ( avail = this->rx_q_sz() ) > 0; ) {
             byte_t buf[ 0x400 ];
 
             int buf_eff_len = std::min( avail, static_cast< int >( sizeof( buf ) ) );
