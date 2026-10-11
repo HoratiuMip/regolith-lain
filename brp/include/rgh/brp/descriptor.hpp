@@ -19,6 +19,7 @@ DO NOT MODIFY AS THE MODIFICATIONS WILL BE LOST.
 #define RGH_IMPL_FNC
 
 #define _RGH_PROTECTED protected
+#define RGH_protected  protected
 #define _RGH_PRIVATE   private
 
 #ifdef __EXCEPTIONS
