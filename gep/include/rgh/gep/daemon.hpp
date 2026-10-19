@@ -4,9 +4,7 @@
 #   Copyright (c) [2024-2026]. All rights reserved.
 #   Licensed under the MIT License. See the LICENSE file in the project root for full license information.
 #
-# ENHANCEMENTS:
-#   [ ] Reconsider whether daemon_wake is necessary, or just add a method that waits on
-#         the state until it changes from STARTING.
+# DETAILS: Service control.
 */
 #include <rgh/gep/core.hpp>
 #include <rgh/gep/dispenser.hpp>
@@ -14,7 +12,7 @@
 namespace rgh {
 
 class Daemon {
-_RGH_PROTECTED:
+RGH_protected:
     friend class Daemon_cluster;
 
 public:
@@ -27,31 +25,33 @@ public:
         StateCtl_KEEP_ALIVE
     };
 
-_RGH_PROTECTED:
-    std::atomic< State_ >           _daemon_state   = { State_STOPPED };
-    std::vector< HVec< Daemon > >   _daemon_deps    = {};
+RGH_protected:
+    std::atomic<State_>         _daemon_state   = { State_STOPPED };
+    std::vector<HVec<Daemon>>   _daemon_deps    = {};
 
-_RGH_PROTECTED:
-    virtual status_t _daemon_start( void* ctx_ ) = 0;
-    virtual status_t _daemon_stop( void* ctx_ ) = 0;
-    virtual void _daemon_wake( void* ctx_ ) { return; }
+RGH_protected:
+    virtual ret_t _daemon_start( void* ) = 0;
+    virtual ret_t _daemon_stop( void* ) = 0;
+
+    virtual ret_t _daemon_start_proc( void* ) { return OK; }
+    virtual ret_t _daemon_stop_proc( void* ) { return OK; }
 
 public:
     virtual std::string_view daemon_name( void ) const = 0;
     virtual std::string daemon_report( void* arg_ = nullptr ) const = 0;
 
 public:
-    RGH_inline State_ daemon_state( std::memory_order mo_ = std::memory_order_relaxed ) const {
+    State_ daemon_state( std::memory_order mo_ = std::memory_order_relaxed ) const {
         return _daemon_state.load( mo_ );
     }
 
-_RGH_PROTECTED:
-    RGH_inline void _daemon_set_state( const State_ state_, std::memory_order mo_ = std::memory_order_relaxed ) {
+RGH_protected:
+    void _daemon_set_state( const State_ state_, std::memory_order mo_ = std::memory_order_relaxed ) {
         _daemon_state.store( state_, mo_ ); _daemon_state.notify_all();
     }
 
 public:
-    status_t daemon_set_deps( decltype( _daemon_deps ) deps_ ) {
+    ret_t daemon_set_deps( decltype( _daemon_deps ) deps_ ) {
         _daemon_deps = std::move( deps_ );
         return RGH_OK;
     } 
@@ -68,12 +68,12 @@ public:
         return false;
     }
 
-    RGH_inline bool daemon_dep_of( const Daemon& dmn_ ) const {
+    bool daemon_dep_of( const Daemon& dmn_ ) const {
         return this->daemon_dep_of( dmn_.daemon_name() );
     }
 
 public:
-    status_t daemon_start( void* ctx_ = nullptr ) {
+    ret_t daemon_start( void* ctx_ = nullptr ) {
         State_ es = State_STOPPED;
         RGH_ASSERT_OR( _daemon_state.compare_exchange_strong( es, State_STARTING, std::memory_order_release ) ) {
             return RGH_ERR_WOULD_OVRWR;
@@ -86,22 +86,23 @@ public:
             return status_;
         }
         this->_daemon_set_state( State_STARTED, std::memory_order_release );
-        this->_daemon_wake( ctx_ );
+        (void)this->_daemon_start_proc( ctx_ );
         return RGH_OK;
     }
 
-    status_t daemon_stop( void* ctx_ = nullptr ) {
+    ret_t daemon_stop( void* ctx_ = nullptr ) {
         State_ es = State_STARTED;
         RGH_ASSERT_OR( _daemon_state.compare_exchange_strong( es, State_STOPPING, std::memory_order_release ) ) {
             return RGH_ERR_WOULD_OVRWR;
         }
 
-        status_t status = this->_daemon_stop( ctx_ );
+        ret_t status = this->_daemon_stop( ctx_ );
         this->_daemon_set_state( State_STOPPED, std::memory_order_release );
+        (void)this->_daemon_stop_proc( ctx_ );
         return status;
     }
 
-    virtual status_t daemon_restart( void* ctx_ = nullptr ) {
+    virtual ret_t daemon_restart( void* ctx_ = nullptr ) {
         (void)this->daemon_stop( ctx_ );
         return this->daemon_start( ctx_ );
     }
@@ -159,7 +160,7 @@ public:
         mutable int                     _bad_rst_cnt  = 0;
     };
 
-_RGH_PROTECTED:
+RGH_protected:
     struct _dock_compare_t {
         bool operator () ( const dock_t& lhs_, const dock_t& rhs_ ) const {   
             if( lhs_.ref->daemon_dep_of( rhs_.ref ) ) return false;
@@ -169,7 +170,7 @@ _RGH_PROTECTED:
         }
     };
 
-_RGH_PROTECTED:
+RGH_protected:
     Dispenser< std::set< dock_t, _dock_compare_t > >  _register    = { DispenserMode_Lock };
 
     struct _crit_t{
@@ -189,7 +190,7 @@ public:
     RGH_inline bool went_critical( void ) { return _crit.flag.load( std::memory_order_relaxed ); }
 
 public:
-    status_t push( dock_t dock_ ) { 
+    ret_t push( dock_t dock_ ) { 
         auto reg = _register.control();
 
         auto [ itr, inserted ] = reg->emplace( std::move( dock_ ) );
@@ -198,7 +199,7 @@ public:
         return RGH_OK;
     }
 
-    status_t pop( std::string_view name_ ) {
+    ret_t pop( std::string_view name_ ) {
         auto reg = _register.control();
 
         return std::erase_if( *reg, [ &name_ ] ( const dock_t& dock_ ) -> bool {
@@ -207,7 +208,7 @@ public:
     }
 
 public:
-    status_t iterate_register( void ) {
+    ret_t iterate_register( void ) {
         auto reg = _register.control();
 
         for( auto& dock : *reg ) {

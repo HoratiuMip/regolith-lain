@@ -159,9 +159,9 @@ RGH_inline void set_log_level( LogComponent_ comp_, spdlog::level::level_enum lv
 } 
 
 
-struct bridge_t {
+struct Bridge {
 public:
-    bridge_t( 
+    Bridge( 
         RGH_IN   const std::string&   logger_name_ 
     ) {
         logger = spdlog::stdout_color_mt( logger_name_ ); 
@@ -188,7 +188,7 @@ public:
 
     RGH_inline spdlog::logger* operator -> ( void ) noexcept { return logger.get(); }
 };
-extern bridge_t BridgE;
+extern Bridge BridgE;
 
 #define RGH_BRDG_LOGI( ... ) rgh::BridgE.logger->info( __VA_ARGS__ )
 #define RGH_BRDG_LOGW( ... ) rgh::BridgE.logger->warn( __VA_ARGS__ )
