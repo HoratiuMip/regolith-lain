@@ -52,6 +52,7 @@ struct serial_config_t {
     uint8_t    byte_size       = 8;
     uint8_t    parity          = SERIAL_PARITY_NONE;
     uint8_t    stopbit         = SERIAL_STOPBIT_ONE;
+    uint32_t   dtr_on_open     = 0;
     bool       purge_on_open   = true;
     bool       purge_on_close  = false;
 };
@@ -104,6 +105,18 @@ public:
      * @brief: Clear the transmission and reception buffers.
      */
     status_t purge( void ) const;
+
+/// Bring the DTR line to LOW.
+    ret_t dtr_reset( void ) const;
+/// Bring the DTR line to HIGH.
+    ret_t dtr_set( void ) const;
+/// Toggle the DTR line.
+/// @param usec_: Time in microseconds to sleep between the DTR line change.
+    ret_t dtr_toggle( const uint32_t usec_ ) {
+        RGH_ASSERT_RET_OR_RET( this->dtr_reset() );
+        std::this_thread::sleep_for( std::chrono::microseconds( usec_ ) );
+        return this->dtr_set();
+    }
 
 };
 

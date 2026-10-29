@@ -96,7 +96,7 @@ public:
     l_begin:
         status_t ret = this->encode( bytes_, len_ );
         if( ret != RGH_ERR_CORRUPTED ) return ret;
-
+        
         RGH_ASSERT_OR( _state.crt_sz > 1 ) return RGH_ERR_CORRUPTED;
 
         memmove( _buffer, _buffer+1, _state.crt_sz-1 );

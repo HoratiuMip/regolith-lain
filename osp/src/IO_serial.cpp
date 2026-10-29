@@ -141,6 +141,13 @@ ret_t Serial::purge( void ) const {
     return 0x0;
 }
 
+ret_t Serial::dtr_reset( void ) const {
+    return RGH_ERR_NOT_IMPL;
+}
+ret_t Serial::dtr_set( void ) const {
+    return RGH_ERR_NOT_IMPL;
+}
+
 #elifdef RGH_TARGET_OS_LINUX
 
 static constexpr speed_t _baud4termios( uint32_t baud_ ) noexcept {
@@ -236,6 +243,8 @@ ret_t Serial::open(
         return RGH_ERR_SYSCALL;
     }
 
+    if( _config.dtr_on_open != 0 ) this->dtr_toggle( _config.dtr_on_open );
+
     if( _config.purge_on_open ) {
         RGH_ASSERT_STATUS_OR( this->purge() ) {
             RGH_BRDG_LOGW( "serial: bad purge when opening {}.", _device );
@@ -306,6 +315,19 @@ int Serial::rx_q_sz( void ) const {
 ret_t Serial::purge( void ) const {
     RGH_ASSERT_OR( ::tcflush( _port, TCIOFLUSH ) == 0 ) return RGH_ERR_SYSCALL;
     return RGH_OK;
+}
+
+ret_t Serial::dtr_reset( void ) const {
+    int status = 0x0;
+    RGH_ASSERT_OR( 0x0 == ioctl( _port, TIOCMGET, &status ) ) return RGH_ERR_SYSCALL;
+    status |= TIOCM_DTR;
+    return ioctl( _port, TIOCMSET, &status ) == 0x0 ? RGH_OK : RGH_ERR_SYSCALL;
+}
+ret_t Serial::dtr_set( void ) const {
+    int status = 0x0;
+    RGH_ASSERT_OR( 0x0 == ioctl( _port, TIOCMGET, &status ) ) return RGH_ERR_SYSCALL;
+    status &= ~TIOCM_DTR;
+    return ioctl( _port, TIOCMSET, &status ) == 0x0 ? RGH_OK : RGH_ERR_SYSCALL;
 }
 
 #endif

@@ -47,12 +47,17 @@ public:
 
 class COM_ports {
 public:
-    struct frame_args_t : rgh::Immersive::frame_cb_args_t {
-        IN       const char*                    scan_btn_lbl_   = "Scan for COM ports";
-        IN       const char*                    no_ports_lbl_   = "No COM ports found.";
-        IN       const char*                    conn_btn_lbl_   = "Connect";
-        IN_OPT   HVec< Task_taker >             tsk_tkr_        = nullptr;
-        IN_OPT   std::array< const char*, 3 >   hl_keys_        = {};
+    struct frame_args_t {
+        IN       const rgh::Immersive::frame_cb_args_t&   C;
+        IN       std::string_view                         dev            = {};
+        IN_OPT   std::span< const char* >                 hl_keys        = {};
+        IN_OPT   HVec< Task_taker >                       tsk_tkr        = nullptr;
+        IN       const char*                              lbl_scan       = "Scan";
+        IN       const char*                              lbl_na         = "N/A";
+        IN       const char*                              lbl_up         = "Up";
+        IN       const char*                              lbl_down       = "Down";
+
+        const std::decay_t< decltype( C ) >* operator -> ( void ) const { return &C; }
     };
 
 public:
@@ -91,14 +96,14 @@ public:
         return OK;
     }
 
-//# connect, scan requested
-    std::tuple< const io::COM_port_t*, bool > imm_frame( 
+/// @returns: <uplink, scan, downlink> 
+    std::tuple< const io::COM_port_t*, bool, bool > imm_frame( 
         IN   io::COM_ports::watch_t&   watch_,
-        IN   const frame_args_t&       args_      
+        IN   const frame_args_t&       C      
     ) {
-        const io::COM_port_t* conn_to  = nullptr;
-        bool                  scan_req = ImGui::Button( args_.scan_btn_lbl_ );
-        bool dconn   = false;
+        const io::COM_port_t* up_to     = nullptr;
+        bool                  scan_req  = ImGui::Button( C.lbl_scan );
+        bool                  down_from = false;
 
         auto& ports = *watch_;
         if( not ports.empty() ) {
@@ -111,11 +116,13 @@ public:
                         bool selected         = false;
                     
                         ImGui::SameLine();
-                        if( ImGui::Button( args_.conn_btn_lbl_ ) ) conn_to = &crt_port;
-                        if( ImGui::IsItemHovered() ) { selectable_flags |= ImGuiSelectableFlags_Highlight; }
+                        if( ImGui::Button( C.lbl_up ) ) up_to = &crt_port;
+                        ImGui::SameLine();
+                        if( C.dev == crt_port.id && ImGui::Button( C.lbl_down ) ) down_from = true;
 
-                        for( const char* hl_key : args_.hl_keys_ ) {
-                            if( not args_.blink_500ms || hl_key == nullptr ) break;
+                        if( ImGui::IsItemHovered() ) { selectable_flags |= ImGuiSelectableFlags_Highlight; }
+                        for( const char* hl_key : C.hl_keys ) {
+                            if( not C->blink_500ms || hl_key == nullptr ) break;
                             
                             if( crt_port.detail.contains( hl_key ) ) {
                                 selected |= true;
@@ -131,13 +138,13 @@ public:
             }
         } else {
             ImGui::Separator();
-            ImGui::BulletText( args_.no_ports_lbl_ );
+            ImGui::BulletText( C.lbl_na );
             ImGui::Separator();
         }
         
-        if( scan_req && args_.tsk_tkr_ ) args_.tsk_tkr_->task_taker_pass( [ ports = _ports ] ( void ) -> void { ports->scan(); } );
+        if( scan_req && C.tsk_tkr ) C.tsk_tkr->task_taker_pass( [ ports = _ports ] ( void ) -> void { ports->scan(); } );
 
-        return { conn_to, scan_req }; 
+        return { up_to, scan_req, down_from }; 
     }
 
 public:
