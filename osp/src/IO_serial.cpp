@@ -202,6 +202,9 @@ ret_t Serial::open(
         return RGH_ERR_SYSCALL;
     }
 
+    cfmakeraw( &tty );
+    tty.c_cflag &= ~CRTSCTS;
+
     const speed_t baud = _baud4termios( _config.baud_rate );
     RGH_ASSERT_OR( cfsetospeed( &tty, baud ) == 0x0 and cfsetispeed( &tty, baud ) == 0x0 ) {
         RGH_BRDG_LOGE( "serial: bad baud set on {}.", _device );

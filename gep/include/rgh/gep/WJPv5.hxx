@@ -7,6 +7,7 @@
 # DETAILS: C++ wrapper over the WJPv5 protocol with STL.
 */
 
+/// Search for the WJPv5.hxx header and attempt to include it.
 #if defined(__has_include)
     #if __has_include( <rgh/brp/WJPv5.h> )
         #include <rgh/brp/WJPv5.hxx>
@@ -19,6 +20,7 @@
     #include "WJPv5.hxx"
 #endif 
 
+/// STL for enhanced codeflows.
 #include <expected>
 #include <functional>
 #include <memory>
@@ -27,16 +29,19 @@
 
 namespace wjpxx {
 
+/// The Euclid Adapter is meant to be inherited from. Override wjpxx_euclid_rx_callback() in the derived class.
 template< WJP_u _MLC_Sz_ = 111, WJP_u _BoF_ = WJP_EUCLID_DEFAULT_BOF > 
 class Euclid_adapter : public Euclid {
 public:
     Euclid_adapter( void ) = default;
 
+/// Build the adapter given the reception buffer size.
     explicit Euclid_adapter( std::size_t rxbufsz_ ) noexcept 
-    : Euclid( WJP_EUCLID_CONTEXT_EX( 
-            _BoF_, _MLC_Sz_/100%10, _MLC_Sz_/10%10, _MLC_Sz_%10, 
-            rxbufsz_ != 0uz ? new (std::nothrow) WJP_u8[ rxbufsz_ ] : nullptr, rxbufsz_, &Euclid_adapter::_callback, static_cast<void*>( this )
-      ) ),
+    : Euclid( {
+        { _BoF_, _MLC_Sz_/100%10, _MLC_Sz_/10%10, _MLC_Sz_%10 }, 
+        rxbufsz_ != 0uz ? new (std::nothrow) WJP_u8[ rxbufsz_ ] : nullptr, static_cast<WJP_u>( rxbufsz_ ), 
+        &Euclid_adapter::_callback, static_cast<void*>( this )
+      } ),
       _rxbuf( this->WJP_euclid_context_t::rxbuf )
     {
         WJP_ASSERT_OR( this->Euclid::effective() ) {
@@ -50,19 +55,19 @@ protected:
 
 protected:
     static int _callback( void* usr_, WJP_u mrk_, WJP_u8* buf_, WJP_u len_ ) {
-        return static_cast<int>( static_cast<Euclid_adapter*>( usr_ )->wjpxx_euclid_rx_callback( mrk_, (buf_, len_) ) );
+        return static_cast<int>( static_cast<Euclid_adapter*>( usr_ )->wjpxx_euclid_rx_callback( mrk_, {buf_, len_} ) );
     }
 
 public:
     virtual RxCallbackRet wjpxx_euclid_rx_callback( WJP_u, std::span<WJP_u8> ) = 0;
 
 public:
+/// Encode bytes into the state machine of the adapter.
     std::expected<void, int> push( std::span<const WJP_u8> span_ ) noexcept { 
-        const int ret = this->Euclid::push( this, span_.data(), span_.size() );
+        const int ret = this->Euclid::push( span_.data(), span_.size() );
         WJP_ASSERT_OR( WJP_RET_OK == ret ) return std::unexpected( ret );
         return {};
     }
-
 };
 
-};
+}//#wjpxx

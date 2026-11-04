@@ -25,6 +25,11 @@ namespace rgh {
 #define RGH_FASTCLI_OPT_SWITCH_BEGIN(st_) char opt; while( opt = (st_).next() ) { switch( opt ) { RGH_FASTCLI_DEFAULT_STENCIL_CASES
 #define RGH_FASTCLI_OPT_SWITCH_END } }
 
+/// Default manual command using std::println.
+/// ---
+#define RGH_FASTCLI_DEFAULT_MAN_CMD_PRINTLN \
+    [] ( std::string_view text_, std::string_view man_ ) static -> void { std::println( "COMMAND\n\t{}\n{}", text_, man_ ); } 
+
 class Fast_cli {
 public:
     struct cmd_t;
@@ -60,7 +65,7 @@ _RGH_PROTECTED:
 public:
 //# Master configuration of the parser.
     struct config_t {
-    //# WHen this is not NULL, it is called back when "man <command>" is parsed.
+    //# When this is not NULL, it is called back when "man <command>" is parsed.
         std::function< void( std::string_view, std::string_view ) >   when_man   = nullptr;
 
     //# Use std::string to take advantage of SSO.
@@ -127,12 +132,12 @@ public:
         RGH_inline auto& f64v( void )  { return *(std::vector< double >*)_arg; }
 
     public:
-        RGH_inline void operator += ( const std::string& line_ ) { *_ctx->out += line_; }
+        RGH_inline void operator += ( std::string_view line_ ) { *_ctx->out += line_; }
 
-        template< typename ..._Args_ > RGH_inline void operator () ( const char* const fmt_, _Args_&&... args_ ) {
-            this->operator+=( std::vformat( fmt_, std::make_format_args( std::forward< _Args_ >( args_ )... ) ) );
+        template< typename... Args_ >
+        RGH_inline void operator () ( std::format_string< Args_... > fmt_, Args_&&... args_ ) {
+            std::format_to( std::back_inserter( *_ctx->out ), fmt_, std::forward<Args_>( args_ )... );
         }
-
     _RGH_PROTECTED:
         template< typename _T_cvt_ > bool _cvt_opt_arg( void* where_ ) {
             if constexpr( std::is_same_v< _T_cvt_, int32_t > ) {
@@ -220,7 +225,7 @@ public:
     struct cmd_t {
         std::string            text   = {};
         std::vector< opt_t >   opts   = {};
-        std::string_view       man    = "No manual provided for this command.";
+        std::string_view       man    = "MANUAL\n\tNo manual provided for this command.";
         cmd_fnc_t              fnc    = nullptr;
 
         const opt_t* opt_by_short( char short_ ) const {
@@ -272,17 +277,20 @@ _RGH_PROTECTED:
                 .text = "man",
                 .opts = { { .sh0rt = 'c', .l0ng = "command", .arg = argtext, .fast_id = 0x0 } },
                 .man  = "MAN-CEPTION!!!",
-                .fnc  = [ this ] ( auto& C_ ) -> status_t {
+                .fnc  = [ this ] ( auto& C ) -> status_t {
                     RGH_ASSERT_OR( _config.when_man ) return RGH_ERR_CORRUPTED;
 
                     std::string cmd = {};
 
-                    RGH_FASTCLI_OPT_SWITCH_BEGIN(C_)
-                        case 'c': cmd = C_.str(); break;
+                    RGH_FASTCLI_OPT_SWITCH_BEGIN(C)
+                        case 'c': cmd = C.str(); break;
                     RGH_FASTCLI_OPT_SWITCH_END
 
                     auto itr = std::ranges::find( _cmd_map, cmd, &cmd_t::text );
-                    RGH_ASSERT_OR( itr != _cmd_map.end() ) return RGH_ERR_NOT_FOUND;
+                    RGH_ASSERT_OR( itr != _cmd_map.end() ) {
+                        C( "man: no such command: {}.", cmd );
+                        return RGH_ERR_NOT_FOUND;
+                    }
 
                     this->_config.when_man( itr->text, itr->man );
                     return RGH_OK;

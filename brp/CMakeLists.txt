@@ -8,4 +8,7 @@ file( GLOB _source_files "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp" )
 add_library( RGH_BRp STATIC ${_source_files} )
 target_include_directories( RGH_BRp PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" )
 
+target_compile_definitions( RGH_BRp 
+    PUBLIC RGH_BRP 
+)
 add_library( rgh::libbrp ALIAS RGH_BRp )

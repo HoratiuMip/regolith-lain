@@ -112,23 +112,29 @@ public:
                     auto& crt_port = ports[ idx ];
 
                     ImGui::Separator();
-                        int  selectable_flags = ImGuiSelectableFlags_None;
-                        bool selected         = false;
+                        int        selectable_flags = ImGuiSelectableFlags_None;
+                        bool       selected         = false;
+                        const bool is_upped         = C.dev == crt_port.id;
                     
                         ImGui::SameLine();
-                        if( ImGui::Button( C.lbl_up ) ) up_to = &crt_port;
+                        if( not is_upped and ImGui::Button( C.lbl_up ) ) up_to = &crt_port;
                         ImGui::SameLine();
-                        if( C.dev == crt_port.id && ImGui::Button( C.lbl_down ) ) down_from = true;
+                        if( is_upped && ImGui::Button( C.lbl_down ) ) down_from = true;
 
                         if( ImGui::IsItemHovered() ) { selectable_flags |= ImGuiSelectableFlags_Highlight; }
-                        for( const char* hl_key : C.hl_keys ) {
-                            if( not C->blink_500ms || hl_key == nullptr ) break;
-                            
-                            if( crt_port.detail.contains( hl_key ) ) {
-                                selected |= true;
-                                break;
+                        if( is_upped ) {
+                            selected |= true;
+                        } else {
+                            for( const char* hl_key : C.hl_keys ) {
+                                if( not C->blink_500ms || hl_key == nullptr ) break;
+                                
+                                if( crt_port.detail.contains( hl_key ) ) {
+                                    selected |= true;
+                                    break;
+                                }
                             }
                         }
+
                         ImGui::SameLine(); ImGui::Bullet();
                         if( ImGui::Selectable( std::format( "{} - {}", crt_port.id, crt_port.detail ).c_str(), selected, static_cast< ImGuiSelectableFlags_ >( selectable_flags ) ) ) {
                             

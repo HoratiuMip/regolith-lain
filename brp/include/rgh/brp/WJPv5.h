@@ -20,6 +20,13 @@ typedef   unsigned int    WJP_u;
 
 #define WJP_ASSERT_OR(c_) if(!(c_))
 
+#define WJP_IN
+#define WJP_OUT
+#define WJP_IN_OUT
+#define WJP_IN_OPT
+#define WJP_OUT_OPT
+#define WJP_IN_OUT_OPT
+
 //# CRC-8/SMBUS lookup table.
 static const WJP_u8 _wjp_crc8_smbus_lktbl[ 256 ] = {
     0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15, 0x38, 0x3F, 0x36, 0x31, 0x24, 0x23, 0x2A, 0x2D,
@@ -40,11 +47,7 @@ static const WJP_u8 _wjp_crc8_smbus_lktbl[ 256 ] = {
     0xDE, 0xD9, 0xD0, 0xD7, 0xC2, 0xC5, 0xCC, 0xCB, 0xE6, 0xE1, 0xE8, 0xEF, 0xFA, 0xFD, 0xF4, 0xF3
 };
 
-WJP_u8 wjp_crc8( const WJP_u8* const src_, const int len_ ) {
-    WJP_u8 crc = 0x00;
-    for( int i = 0; i < len_; ++i ) crc = _wjp_crc8_smbus_lktbl[ crc ^ src_[i] ]; 
-    return crc;
-}
+WJP_u8 wjp_crc8( const WJP_u8* const, const WJP_u );
 
 #pragma region WJP Euclid
 #define WJP_EUCLID_DEFAULT_BOF ((WJP_u8)0xA5)  
@@ -59,6 +62,8 @@ WJP_u8 wjp_crc8( const WJP_u8* const src_, const int len_ ) {
 #define WJP_EUCLID_RX_CALLBACK_RET_OK     0x0
 #define WJP_EUCLID_RX_CALLBACK_RET_RELOCK -0x1
 
+typedef   int( *wjp_euclid_rx_callback_t )( void*, WJP_u, WJP_u8*, WJP_u );
+
 typedef struct WJP_euclid_config {
     WJP_u8    bof;
     WJP_u8    mrksz   : 2;
@@ -67,6 +72,21 @@ typedef struct WJP_euclid_config {
 } WJP_euclid_config_t;
 
 typedef struct WJP_euclid_context {
+#ifdef __cplusplus
+    WJP_euclid_context( void ) = default;
+
+    WJP_euclid_context( 
+        WJP_IN       const WJP_euclid_config_t&, 
+        WJP_IN_OPT   WJP_u8*, 
+        WJP_IN_OPT   WJP_u, 
+        WJP_IN_OPT   wjp_euclid_rx_callback_t,
+        WJP_IN_OPT   void*                        = nullptr    
+    );
+
+    WJP_euclid_context( const WJP_euclid_context& );
+
+    WJP_euclid_context( WJP_euclid_context&& ) = delete;
+#endif
     WJP_euclid_config_t   cfg;
 
     WJP_u8    _phs;
@@ -82,12 +102,18 @@ typedef struct WJP_euclid_context {
     int       (*rxcbk)( void*, WJP_u, WJP_u8*, WJP_u );
     void*     usr;
 } WJP_euclid_context_t;
-typedef   int( *wjp_euclid_rx_callback_t )( void*, WJP_u, WJP_u8*, WJP_u );
 
+#ifndef __cplusplus
 #define WJP_EUCLID_CONTEXT( mrksz_, lensz_, crcsz_, rxbuf_, rxlen_, rxcbk_, usr_ ) \
     { .cfg = { .bof = WJP_EUCLID_DEFAULT_BOF, .mrksz = (mrksz_), .lensz = (lensz_), .crcsz = (crcsz_) }, .rxbuf = (rxbuf_), .rxlen = (rxlen_), .rxcbk = (rxcbk_), .usr = (usr_) }
 #define WJP_EUCLID_CONTEXT_EX( bof_, mrksz_, lensz_, crcsz_, rxbuf_, rxlen_, rxcbk_, usr_ ) \
     { .cfg = { .bof = (bof_), .mrksz = (mrksz_), .lensz = (lensz_), .crcsz = (crcsz_) }, .rxbuf = (rxbuf_), .rxlen = (rxlen_), .rxcbk = (rxcbk_), .usr = (usr_) }
+#else
+#define WJP_EUCLID_CONTEXT( mrksz_, lensz_, crcsz_, rxbuf_, rxlen_, rxcbk_, usr_ ) \
+    { { WJP_EUCLID_DEFAULT_BOF, (mrksz_), (lensz_), (crcsz_) }, (rxbuf_), (rxlen_), (rxcbk_), (usr_) }
+#define WJP_EUCLID_CONTEXT_EX( bof_, mrksz_, lensz_, crcsz_, rxbuf_, rxlen_, rxcbk_, usr_ ) \
+    { { (bof_), (mrksz_), (lensz_), (crcsz_) }, (rxbuf_), (rxlen_), (rxcbk_), (usr_) }
+#endif
 
 WJP_u WJP_euclid_meta_size( const WJP_euclid_config* const );
 void WJP_euclid_emplace_meta3( const WJP_euclid_config* const, WJP_u8** const, const WJP_u, const WJP_u );
@@ -109,6 +135,12 @@ int WJP_euclid_push( WJP_euclid_context_t* const ctx_, const WJP_u8* src_, int l
         void _wjp_memcpy( WJP_u8* dst_, const WJP_u8* src_, WJP_u sz_ ) { for( WJP_u i = 0; i < sz_; ++i ) dst_[i] = src_[i]; }
     #endif
 #endif 
+
+WJP_u8 wjp_crc8( const WJP_u8* const src_, const WJP_u len_ ) {
+    WJP_u8 crc = 0x00;
+    for( int i = 0; i < len_; ++i ) crc = _wjp_crc8_smbus_lktbl[ crc ^ src_[i] ]; 
+    return crc;
+}
 
 static WJP_u8 _wjp_euclid_crc8_rx( const WJP_euclid_context* const ctx_ ) {
     WJP_u8 crc = 0x00;
@@ -165,6 +197,26 @@ static void _wjp_euclid_relock_bof( WJP_euclid_context* const ctx_ ) {
     return;
 }
 
+#ifdef __cplusplus
+WJP_euclid_context::WJP_euclid_context ( 
+    WJP_IN       const WJP_euclid_config_t&   cfg_, 
+    WJP_IN_OPT   WJP_u8*                      rxbuf_, 
+    WJP_IN_OPT   WJP_u                        rxlen_, 
+    WJP_IN_OPT   wjp_euclid_rx_callback_t     rxcbk_,
+    WJP_IN_OPT   void*                        usr_
+)
+: cfg( cfg_ ), rxbuf( rxbuf_ ), rxlen( rxlen_ ), rxcbk( rxcbk_ ), usr( usr_ )
+{
+    WJP_euclid_init( this );
+}
+
+WJP_euclid_context::WJP_euclid_context( const WJP_euclid_context& other_ ) 
+: cfg( other_.cfg ), rxbuf( other_.rxbuf ), rxlen( other_.rxlen ), rxcbk( other_.rxcbk ), usr( other_.usr )
+{
+    WJP_euclid_init( this );
+}
+
+#endif
 
 WJP_u WJP_euclid_meta_size( const WJP_euclid_config* const cfg_ ) {
     return 1 + cfg_->mrksz + cfg_->lensz + cfg_->crcsz;
@@ -299,7 +351,6 @@ lbl_call_rxcbk: {
 }
 
 #endif//#WJP_EUCLID_IMPLEMENTATION
-#pragma endregion WJP Euclid
 
 #ifdef WJP_EUCLID_TEST
 
@@ -465,5 +516,7 @@ const char* WJP_euclid_test( void ) {
 }
 
 #endif//#WJP_EUCLID_TEST
+
+#pragma endregion WJP Euclid
 
 #endif//#WJPV5_H
