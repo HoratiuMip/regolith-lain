@@ -23,10 +23,10 @@ public:
     RGH_inline status_t write_reg( uint8_t reg_, uint8_t val_ ) {
     #if __cplusplus >= 202002L
         return this->write( 
-            { .src_ptr = (char[]){ reg_, val_ }, .src_n = 2 }
+            { .src_ptr = (byte_t[]){ reg_, val_ }, .src_n = 2 }
         );
     #else
-        char bytes[ 2 ] = { (char)reg_, (char)val_ };
+        byte_t bytes[ 2 ] = { (byte_t)reg_, (byte_t)val_ };
         port_W_desc_t wd;
         wd.src_ptr = bytes;
         wd.src_n   = 2;

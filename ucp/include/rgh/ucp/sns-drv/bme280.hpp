@@ -62,14 +62,14 @@ public:
         uint8_t buffer[ 7 ];
 
         RGH_ASSERT_STATUS_OR_RET( _i2c->write_read( 
-            { .src_ptr = (char[]){ 0xA1 }, .src_n = 1 }, 
-            { .dst_ptr = (char*)buffer, .dst_n = 1 } 
+            { .src_ptr = (byte_t[]){ 0xA1 }, .src_n = 1 }, 
+            { .dst_ptr = (byte_t*)buffer, .dst_n = 1 } 
         ) );
         _calibs.dig_H1 = buffer[ 0 ];
 
         RGH_ASSERT_STATUS_OR_RET( _i2c->write_read( 
-            { .src_ptr = (char[]){ 0xE1 }, .src_n = 1 }, 
-            { .dst_ptr = (char*)buffer, .dst_n = sizeof( buffer ) } 
+            { .src_ptr = (byte_t[]){ 0xE1 }, .src_n = 1 }, 
+            { .dst_ptr = (byte_t*)buffer, .dst_n = sizeof( buffer ) } 
         ) );
         _calibs.dig_H2 = (buffer[ 1 ] << 8) | buffer[ 0 ];
         _calibs.dig_H3 = buffer[ 2 ];
@@ -84,8 +84,8 @@ public:
         uint8_t buffer[ 8 ];
 
         RGH_ASSERT_STATUS_OR_RET( _i2c->write_read( 
-            { .src_ptr = (char[]){ 0xF7 }, .src_n = 1 }, 
-            { .dst_ptr = (char*)buffer, .dst_n = sizeof( buffer ) } 
+            { .src_ptr = (byte_t[]){ 0xF7 }, .src_n = 1 }, 
+            { .dst_ptr = (byte_t*)buffer, .dst_n = sizeof( buffer ) } 
         ) );
   
         int32_t raw_temp  = (int32_t)((buffer[ 3 ] << 12) | (buffer[ 4 ] << 4) | (buffer[ 5 ] >> 4));

@@ -129,7 +129,7 @@ _RGH_PROTECTED:
         &_rpc, &_sattr_request, &_sattr_update, &_fota
     };
 
-    ThingsBoardSized< CFG_::MAX_JSON_FIELDS_PER_RECV >                        _dev             = { _mqtt_client, 1024, 1024, 8192, _APIs };
+    ThingsBoardSized< CFG_::MAX_JSON_FIELDS_PER_RECV >                        _dev             = { _mqtt_client, 1024, 8192, _APIs };
 
     thingsboard_daemon_loop_cb_t                                              _loop_cb         = nullptr;  
     uint32_t                                                                  _loop_int_ms     = 200;    

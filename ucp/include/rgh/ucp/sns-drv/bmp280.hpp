@@ -116,8 +116,8 @@ public:
         uint8_t buffer[ 24 ];
 
         RGH_ASSERT_STATUS_OR_RET( _i2c->write_read( 
-            { .src_ptr = (char*)(char[]){ 0x88 }, .src_n = 1 }, 
-            { .dst_ptr = (char*)buffer, .dst_n = sizeof( buffer ) } 
+            { .src_ptr = (byte_t*)(byte_t[]){ 0x88 }, .src_n = 1 }, 
+            { .dst_ptr = (byte_t*)buffer, .dst_n = sizeof( buffer ) } 
         ) );
     #define _MAKE_WORD( offset ) ( ( buffer[ offset+1 ] << 8 ) | buffer[ offset ] )
         _calibs.dig_T1 = _MAKE_WORD(0);
@@ -140,8 +140,8 @@ public:
         uint8_t buffer[ 6 ];
 
         RGH_ASSERT_STATUS_OR_RET( _i2c->write_read( 
-            { .src_ptr = (char[]){ 0xF7 }, .src_n = 1 }, 
-            { .dst_ptr = (char*)buffer, .dst_n = sizeof( buffer ) } 
+            { .src_ptr = (byte_t[]){ 0xF7 }, .src_n = 1 }, 
+            { .dst_ptr = (byte_t*)buffer, .dst_n = sizeof( buffer ) } 
         ) );
   
         int32_t raw_temp  = ( int32_t )( ( buffer[ 3 ] << 12 ) | ( buffer[ 4 ] << 4 ) | ( buffer[ 5 ] >> 4 ) );
