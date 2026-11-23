@@ -43,7 +43,7 @@ concept Thingsboard_daemon_static_cfg = requires {
 };
 struct thingsboard_daemon_static_default_cfg_t {
     inline static constexpr uint32_t   MAX_JSON_FIELDS_PER_RECV   = Default_Response_Amount;
-    inline static constexpr uint32_t   RPC_ARRAY_SIZE             = Default_Subscriptions_Amount;
+    inline static constexpr uint32_t   RPC_ARRAY_SIZE             = 2;
     inline static constexpr uint32_t   MAX_JSON_FIELDS_PER_SEND   = Default_RPC_Amount;
     inline static constexpr uint32_t   SATTR_ARRAY_SIZE           = Default_Attributes_Amount;
     inline static constexpr uint32_t   SATTR_REQ_TIMEOUT_MS       = 3'000;

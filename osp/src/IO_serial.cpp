@@ -31,7 +31,9 @@ namespace rgh::io {
 ret_t Serial::open( const char* device_, const serial_config_t& config_ ) {
     if( _port != SERIAL_INVALID_HANDLE ) this->close();
 
-    _port = CreateFileA( device_, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+    std::string device = device_;
+    if( not device.starts_with( "\\\\.\\" ) ) device.insert( 0, "\\\\.\\" );
+    _port = CreateFileA( device.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
 
     RGH_ON_SCOPE_EXIT_L( [ this ] ( void ) -> void {
         if( _port != SERIAL_INVALID_HANDLE ) {
@@ -40,30 +42,30 @@ ret_t Serial::open( const char* device_, const serial_config_t& config_ ) {
     } );
 
     RGH_ASSERT_OR( _port != SERIAL_INVALID_HANDLE ) {
-        RGH_LOGE_IO_EX( RGH_ERR_SYSCALL, "Could not open serial port \"{}\".", device_ );
+        RGH_LOGE_IO_EX( RGH_ERR_SYSCALL, "Could not open serial port \"{}\".", device );
         return RGH_ERR_SYSCALL;
     }
 
     RGH_ASSERT_OR( FlushFileBuffers( _port ) ) {
-        RGH_LOGW_IO( "Could not flush serial port buffers for opened serial port \"{}\", error code [{}].", device_, GetLastError() );
+        RGH_LOGW_IO( "Could not flush serial port buffers for opened serial port \"{}\", error code [{}].", device, GetLastError() );
     }
 
     COMMTIMEOUTS timeouts{
-        ReadIntervalTimeout         : config_.rx_ib_timeout,
-        ReadTotalTimeoutMultiplier  : 0,
-        ReadTotalTimeoutConstant    : config_.rx_fb_timeout,
-        WriteTotalTimeoutMultiplier : 0,
-        WriteTotalTimeoutConstant   : config_.tx_timeout
+        .ReadIntervalTimeout         = config_.rx_ib_timeout,
+        .ReadTotalTimeoutMultiplier  = 0,
+        .ReadTotalTimeoutConstant    = config_.rx_fb_timeout,
+        .WriteTotalTimeoutMultiplier = 0,
+        .WriteTotalTimeoutConstant   = config_.tx_timeout
     };
 
     RGH_ASSERT_OR( SetCommTimeouts( _port, &timeouts ) ) {
-        RGH_LOGW_IO( "Could not set the configured timeouts for serial port \"{}\", error code [{}].", device_, GetLastError() );
+        RGH_LOGW_IO( "Could not set the configured timeouts for serial port \"{}\", error code [{}].", device, GetLastError() );
     }
 
     DCB state{ 0 }; state.DCBlength = sizeof( DCB );
 
     RGH_ASSERT_OR( GetCommState( _port, &state ) ) {
-        RGH_LOGW_IO( "Could not read the default state of the serial port \"{}\". Some configurations might be defaulted or contain garbage values. Error code [{}].", device_, GetLastError() );
+        RGH_LOGW_IO( "Could not read the default state of the serial port \"{}\". Some configurations might be defaulted or contain garbage values. Error code [{}].", device, GetLastError() );
     }
 
     state.BaudRate     = ( uint32_t )config_.baud_rate;
@@ -74,17 +76,18 @@ ret_t Serial::open( const char* device_, const serial_config_t& config_ ) {
     state.fRtsControl  = RTS_CONTROL_DISABLE;
     state.fOutX        = false;  
     state.fInX         = false;   
+    state.fBinary      = true;
 
     RGH_ASSERT_OR( SetCommState( _port, &state ) ) {
-        RGH_LOGE_IO( "Could not configure the serial port \"{}\", error code [{}].", device_, GetLastError() );
+        RGH_LOGE_IO( "Could not configure the serial port \"{}\", error code [{}].", device, GetLastError() );
         return -0x1;
     }
 
-    if( config_.purge_on_open ) this->purge();
-
     RGH_ON_SCOPE_EXIT_DROP;
-    _device = device_;
+    _device = std::move( device );
     _config = config_;
+
+    if( config_.purge_on_open ) this->purge();
 
     RGH_LOGI_IO( "Opened and configured serial port \"{}\" successfully @{}bauds.", _device, _config.baud_rate );
     return 0x0;
