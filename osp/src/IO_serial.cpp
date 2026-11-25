@@ -431,6 +431,481 @@ RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
 #pragma endregion Fasttrack_serial
 
 }
+
+namespace rgh::io::v2 {
+
+#pragma region v2::Simple_serial
+#ifdef RGH_TARGET_OS_WINDOWS
+RGH_IMPL_FNC ret_t Simple_serial::uplink( 
+    RGH_IN   serial_config_t   req_cfg_
+) noexcept {
+//# Validate the requested device path.
+    RGH_ASSERT_OR( not req_cfg_.device.empty() ) { 
+        RGH_BRDG_LOGE( "serial: empty device path." );
+        return RGH_ERR_BADARG; 
+    }
+//# Assert that this port is not already uplinked. Relink or return based on the current config.
+//# The configuration structure pointer must be valid if the handle is valid.
+    if( _handle != SERIAL_INVALID_HANDLE ) {
+        if( not _config.allow_up_ovrwr ) {
+            RGH_BRDG_LOGE( "serial: uplink to {} would override existing link to {}.", req_cfg_.device, _config.device );
+            return RGH_ERR_WOULD_OVRWR;
+        }
+        RGH_ASSERT_RET_OR( this->Simple_serial::downlink() ) {
+            RGH_BRDG_LOGE( "serial: bad downlink when uplinking to {}.", req_cfg_.device );
+            return ret_;
+        }
+    }
+
+    serial_config_t cfg = std::move( req_cfg_ );
+//# Open through the device namespace so that COM10 and above work. The stored config keeps the requested path.
+    std::string path = cfg.device;
+    if( not path.starts_with( "\\\\.\\" ) ) path.insert( 0, "\\\\.\\" );
+
+    serial_handle_t hdl = ::CreateFileA( path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr );
+    RGH_ASSERT_OR( hdl != SERIAL_INVALID_HANDLE ) {
+        RGH_BRDG_LOGE( "serial: bad uplink to {}, error code [{}].", cfg.device, ::GetLastError() );
+        return RGH_ERR_SYSCALL;
+    }
+    RGH_ON_SCOPE_EXIT_L( [ &hdl ] ( void ) -> void { ::CloseHandle( std::exchange( hdl, SERIAL_INVALID_HANDLE ) ); } );
+
+    RGH_ASSERT_OR( ::FlushFileBuffers( hdl ) ) {
+        RGH_BRDG_LOGW( "serial: bad buffer flush for {}, error code [{}].", cfg.device, ::GetLastError() );
+    }
+
+    COMMTIMEOUTS timeouts{
+        .ReadIntervalTimeout         = cfg.rx_ib_timeout,
+        .ReadTotalTimeoutMultiplier  = 0,
+        .ReadTotalTimeoutConstant    = cfg.rx_fb_timeout,
+        .WriteTotalTimeoutMultiplier = 0,
+        .WriteTotalTimeoutConstant   = cfg.tx_timeout
+    };
+    RGH_ASSERT_OR( ::SetCommTimeouts( hdl, &timeouts ) ) {
+        RGH_BRDG_LOGW( "serial: bad timeouts for {}, error code [{}].", cfg.device, ::GetLastError() );
+    }
+
+    DCB state; std::memset( &state, 0x0, sizeof( state ) ); state.DCBlength = sizeof( DCB );
+    RGH_ASSERT_OR( ::GetCommState( hdl, &state ) ) {
+        RGH_BRDG_LOGW( "serial: bad state populate for {}, some fields may be defaulted, error code [{}].", cfg.device, ::GetLastError() );
+    }
+
+    state.BaudRate     = static_cast<DWORD>( cfg.baud_rate );
+    state.ByteSize     = cfg.byte_size;
+    state.Parity       = cfg.parity;
+    state.StopBits     = cfg.stopbit;
+    state.fOutxCtsFlow = false;  
+    state.fRtsControl  = RTS_CONTROL_DISABLE;
+    state.fOutX        = false;  
+    state.fInX         = false;   
+    state.fBinary      = true;
+
+    RGH_ASSERT_OR( ::SetCommState( hdl, &state ) ) {
+        RGH_BRDG_LOGE( "serial: bad config for {}, error code [{}].", cfg.device, ::GetLastError() );
+        return RGH_ERR_SYSCALL;
+    }
+
+    RGH_ON_SCOPE_EXIT_DROP;
+    _handle = hdl;
+    _config = std::move( cfg );
+//# Post-uplink actions operate on the stored handle. Failures are not fatal to the uplink.
+    if( _config.dtr_on_up != 0 ) RGH_ASSERT_RET_OR( this->dtr_toggle( _config.dtr_on_up ) ) {
+        RGH_BRDG_LOGW( "serial: bad DTR toggle on uplink to {}.", _config.device );
+    }
+    if( _config.purge_on_up ) RGH_ASSERT_RET_OR( this->purge() ) {
+        RGH_BRDG_LOGW( "serial: bad purge on uplink to {}.", _config.device );
+    }
+
+    RGH_BRDG_LOGI( "serial: uplinked {} @{}bauds.", _config.device, _config.baud_rate );
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::downlink( void ) noexcept {
+//# Assert that we were uplinked.    
+    if( _handle == SERIAL_INVALID_HANDLE ) return RGH_OK;
+
+    if( _config.purge_on_down ) RGH_ASSERT_RET_OR( this->purge() ) {
+        RGH_BRDG_LOGW( "serial: bad purge on downlink from {}.", _config.device );
+    }
+
+    auto hdl = std::exchange( _handle, SERIAL_INVALID_HANDLE );
+    auto cfg = std::exchange( _config, serial_config_t{} );
+
+    RGH_ASSERT_OR( ::CloseHandle( hdl ) ) {
+        RGH_BRDG_LOGE( "serial: bad downlink from {}, error code [{}].", cfg.device, ::GetLastError() );
+        return RGH_ERR_SYSCALL;
+    }
+
+    RGH_BRDG_LOGI( "serial: downlinked {}.", cfg.device );
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::read( const port_R_desc_t& desc_ ) {
+    DWORD bc = 0;
+    RGH_ASSERT_OR( ::ReadFile( _handle, desc_.dst_ptr, static_cast<DWORD>( desc_.dst_n ), &bc, nullptr ) ) {
+        desc_.set_bc( 0 );
+        return RGH_ERR_SYSCALL;
+    }
+
+    desc_.set_bc( static_cast<int>( bc ) );
+    if( desc_.req_all and static_cast<int>( bc ) != desc_.dst_n ) return RGH_ERR_PARTIAL;
+
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::write( const port_W_desc_t& desc_ ) {
+    DWORD bc = 0;
+    RGH_ASSERT_OR( ::WriteFile( _handle, desc_.src_ptr, static_cast<DWORD>( desc_.src_n ), &bc, nullptr ) ) {
+        desc_.set_bc( 0 );
+        return RGH_ERR_SYSCALL;
+    }
+
+    desc_.set_bc( static_cast<int>( bc ) );
+    if( desc_.req_all and static_cast<int>( bc ) != desc_.src_n ) return RGH_ERR_BUSY;
+
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC std::expected<uint32_t, ret_t> Simple_serial::rx_q_sz( void ) const {
+    COMSTAT stat; std::memset( &stat, 0x0, sizeof( stat ) );
+    RGH_ASSERT_OR( ::ClearCommError( _handle, nullptr, &stat ) ) return std::unexpected{ RGH_ERR_SYSCALL };
+    return static_cast<uint32_t>( stat.cbInQue );
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::purge( void ) const {
+    RGH_ASSERT_OR( ::PurgeComm( _handle, PURGE_RXABORT | PURGE_TXABORT | PURGE_RXCLEAR | PURGE_TXCLEAR ) ) return RGH_ERR_SYSCALL;
+    return RGH_OK;
+}
+
+//# Same line semantics as the Linux implementation: reset asserts DTR, set deasserts it.
+RGH_IMPL_FNC ret_t Simple_serial::dtr_reset( void ) const {
+    return ::EscapeCommFunction( _handle, SETDTR ) ? RGH_OK : RGH_ERR_SYSCALL;
+}
+RGH_IMPL_FNC ret_t Simple_serial::dtr_set( void ) const {
+    return ::EscapeCommFunction( _handle, CLRDTR ) ? RGH_OK : RGH_ERR_SYSCALL;
+}
+
+#elifdef RGH_TARGET_OS_LINUX
+
+//# _baud4termios is shared with rgh::io.
+
+RGH_IMPL_FNC ret_t Simple_serial::uplink( 
+    RGH_IN   serial_config_t   req_cfg_
+) noexcept {
+//# Validate the requested device path.
+    RGH_ASSERT_OR( not req_cfg_.device.empty() ) { 
+        RGH_BRDG_LOGE( "serial: empty device path." );
+        return RGH_ERR_BADARG; 
+    }
+//# Assert that this port is not already uplinked. Relink or return based on the current config.
+//# The configuration structure pointer must be valid if the handle is valid.
+    if( _handle != SERIAL_INVALID_HANDLE ) {
+        if( not _config.allow_up_ovrwr ) {
+            RGH_BRDG_LOGE( "serial: uplink to {} would override existing link to {}.", req_cfg_.device, _config.device );
+            return RGH_ERR_WOULD_OVRWR;
+        }
+        RGH_ASSERT_RET_OR( this->Simple_serial::downlink() ) {
+            RGH_BRDG_LOGE( "serial: bad downlink when uplinking to {}.", req_cfg_.device );
+            return ret_;
+        }
+    }
+
+    serial_config_t cfg = std::move( req_cfg_ );
+
+    serial_handle_t hdl = ::open( cfg.device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK );
+    RGH_ASSERT_OR( hdl != SERIAL_INVALID_HANDLE ) {
+        RGH_BRDG_LOGE( "serial: bad uplink to {}.", cfg.device );
+        return RGH_ERR_SYSCALL;
+    }
+    RGH_ON_SCOPE_EXIT_L( [ &hdl ] ( void ) -> void { ::close( std::exchange( hdl, SERIAL_INVALID_HANDLE ) ); } );
+
+    struct termios tty; std::memset( &tty, 0x0, sizeof( tty ) );
+    RGH_ASSERT_OR( 0x0 == tcgetattr( hdl, &tty ) ) {
+        RGH_BRDG_LOGE( "serial: bad attr populate for {}.", cfg.device );
+        return RGH_ERR_SYSCALL;
+    }
+
+    cfmakeraw( &tty );
+    tty.c_cflag &= ~CRTSCTS;
+
+    const speed_t baud = _baud4termios( cfg.baud_rate );
+    RGH_ASSERT_OR( 0x0 == cfsetospeed( &tty, baud ) and 0x0 == cfsetispeed( &tty, baud ) ) {
+        RGH_BRDG_LOGE( "serial: bad baud for {}.", cfg.device );
+        return RGH_ERR_SYSCALL;
+    }
+
+    tty.c_cflag &= ~CSIZE;
+    switch( cfg.byte_size ) {
+        case 5: tty.c_cflag |= CS5; break;
+        case 6: tty.c_cflag |= CS6; break;
+        case 7: tty.c_cflag |= CS7; break;
+        default: tty.c_cflag |= CS8;
+    }
+
+    switch( cfg.parity ) {
+        case SERIAL_PARITY_NONE: tty.c_cflag &= ~PARENB; break;
+        case SERIAL_PARITY_ODD: tty.c_cflag |= PARENB; tty.c_cflag |= PARODD; break;
+        case SERIAL_PARITY_EVEN: tty.c_cflag |= PARENB; tty.c_cflag &= ~PARODD; break;
+        case SERIAL_PARITY_MARK: tty.c_cflag |= PARENB; tty.c_cflag |= PARODD; tty.c_cflag |= CMSPAR; break;
+        case SERIAL_PARITY_SPACE: tty.c_cflag |= PARENB; tty.c_cflag &= ~PARODD; tty.c_cflag |= CMSPAR; break;
+        default: tty.c_cflag &= ~PARENB;
+    }
+   
+    (void)( cfg.stopbit == SERIAL_STOPBIT_ONE ? tty.c_cflag &= ~CSTOPB : tty.c_cflag |= CSTOPB );
+
+    tty.c_cflag |= ( CLOCAL | CREAD );
+    tty.c_lflag &= ~( ICANON | ECHO | ECHOE | ISIG );
+    tty.c_iflag &= ~( IXON | IXOFF | IXANY | IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL );
+    tty.c_oflag &= ~OPOST;
+
+    tty.c_cc[VMIN]  = 0;
+    tty.c_cc[VTIME] = (cc_t)( cfg.rx_fb_timeout / 100 ); if( tty.c_cc[VTIME] == 0 ) tty.c_cc[VTIME] = 1;
+
+    RGH_ASSERT_OR( 0x0 == tcsetattr( hdl, TCSANOW, &tty ) ) {
+        RGH_BRDG_LOGE( "serial: bad config for {}.", cfg.device );
+        return RGH_ERR_SYSCALL;
+    }
+
+    RGH_ON_SCOPE_EXIT_DROP;
+    _handle = hdl;
+    _config = std::move( cfg );
+//# Post-uplink actions operate on the stored handle. Failures are not fatal to the uplink.
+    if( _config.dtr_on_up != 0 ) RGH_ASSERT_RET_OR( this->dtr_toggle( _config.dtr_on_up ) ) {
+        RGH_BRDG_LOGW( "serial: bad DTR toggle on uplink to {}.", _config.device );
+    }
+    if( _config.purge_on_up ) RGH_ASSERT_RET_OR( this->purge() ) {
+        RGH_BRDG_LOGW( "serial: bad purge on uplink to {}.", _config.device );
+    }
+
+    RGH_BRDG_LOGI( "serial: uplinked {}.", _config.device );
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::downlink( void ) noexcept {
+//# Assert that we were uplinked.    
+    if( _handle == SERIAL_INVALID_HANDLE ) return RGH_OK;
+
+    if( _config.purge_on_down ) RGH_ASSERT_RET_OR( this->purge() ) {
+        RGH_BRDG_LOGW( "serial: bad purge on downlink from {}.", _config.device );
+    }
+
+    auto hdl = std::exchange( _handle, SERIAL_INVALID_HANDLE );
+    auto cfg = std::exchange( _config, serial_config_t{} );
+
+    RGH_ASSERT_OR( 0x0 == ::close( hdl ) ) {
+        RGH_BRDG_LOGE( "serial: bad downlink from {}.", cfg.device );
+        return RGH_ERR_SYSCALL;
+    }
+
+    RGH_BRDG_LOGI( "serial: downlinked {}.", cfg.device );
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::read( const port_R_desc_t& desc_ ) {
+    ssize_t bc = ::read( _handle, desc_.dst_ptr, desc_.dst_n );
+
+    RGH_ASSERT_OR( bc >= 0 ) {
+        if( errno == EAGAIN || errno == EWOULDBLOCK ) { bc = 0; goto l_ok; }
+        return RGH_ERR_SYSCALL;
+    }
+
+l_ok:
+    desc_.set_bc( bc );
+    if( desc_.req_all and bc != desc_.dst_n ) return RGH_ERR_PARTIAL;
+    
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::write( const port_W_desc_t& desc_ ) {
+    ssize_t bc = ::write( _handle, desc_.src_ptr, desc_.src_n );
+
+    RGH_ASSERT_OR( bc >= 0 ) {
+        if( errno == EAGAIN || errno == EWOULDBLOCK ) { bc = 0; goto l_ok; }
+        return RGH_ERR_SYSCALL;
+    }
+
+l_ok:
+    desc_.set_bc( bc );
+    if( desc_.req_all and bc != desc_.src_n ) return RGH_ERR_BUSY;
+    
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC std::expected<uint32_t, ret_t> Simple_serial::rx_q_sz( void ) const {
+    int bca = 0;
+    RGH_ASSERT_OR( ::ioctl( _handle, FIONREAD, &bca ) >= 0x0 ) return std::unexpected{ RGH_ERR_SYSCALL };
+    RGH_ASSERT_OR( bca >= 0 ) return std::unexpected{ RGH_ERR_CORRUPTED };
+    return static_cast<uint32_t>( bca );
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::purge( void ) const {
+    RGH_ASSERT_OR( ::tcflush( _handle, TCIOFLUSH ) == 0 ) return RGH_ERR_SYSCALL;
+    return RGH_OK;
+}
+
+RGH_IMPL_FNC ret_t Simple_serial::dtr_reset( void ) const {
+    int status = 0x0;
+    RGH_ASSERT_OR( 0x0 == ioctl( _handle, TIOCMGET, &status ) ) return RGH_ERR_SYSCALL;
+    status |= TIOCM_DTR;
+    return ioctl( _handle, TIOCMSET, &status ) == 0x0 ? RGH_OK : RGH_ERR_SYSCALL;
+}
+RGH_IMPL_FNC ret_t Simple_serial::dtr_set( void ) const {
+    int status = 0x0;
+    RGH_ASSERT_OR( 0x0 == ioctl( _handle, TIOCMGET, &status ) ) return RGH_ERR_SYSCALL;
+    status &= ~TIOCM_DTR;
+    return ioctl( _handle, TIOCMSET, &status ) == 0x0 ? RGH_OK : RGH_ERR_SYSCALL;
+}
+#endif
+
+#if !defined( RGH_IMPL_SEL_IO_V2_SERIAL_DTR_TOGGLE )
+#define RGH_IMPL_SEL_IO_V2_SERIAL_DTR_TOGGLE
+RGH_IMPL_FNC ret_t Simple_serial::dtr_toggle( 
+    RGH_IN   const uint32_t   usec_ 
+) const {
+    RGH_ASSERT_RET_OR_RET( this->dtr_reset() );
+    std::this_thread::sleep_for( std::chrono::microseconds( usec_ ) );
+    return this->dtr_set();
+}
+#endif//# RGH_IMPL_SEL_IO_V2_SERIAL_DTR_TOGGLE
+
+#pragma endregion v2::Simple_serial
+
+#pragma region v2::Fasttrack_serial
+
+#ifdef RGH_TARGET_OS_WINDOWS
+
+#elifdef RGH_TARGET_OS_LINUX
+
+#ifndef RGH_IMPL_SEL_IO_V2_FASTTRACK_SERIAL__POLL_LOOP
+#define RGH_IMPL_SEL_IO_V2_FASTTRACK_SERIAL__POLL_LOOP
+RGH_IMPL_FNC void Fasttrack_serial::_poll_loop( 
+    RGH_IN_OUT   std::stop_token   stop_tok_ 
+) noexcept {
+//# Local copy, only used for logging.
+    const serial_config_t cfg = Simple_serial::_config;
+
+    pollfd pfd = {
+        .fd      = _handle,
+        .events  = POLLIN,
+        .revents = 0
+    };
+
+    while( not stop_tok_.stop_requested() ) {
+        int plr = ::poll( &pfd, 1, 500 );
+
+        RGH_ASSERT_AND( plr > 0 ) {
+            RGH_ASSERT_OR( (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) == 0x0 ) {
+                RGH_BRDG_LOGE( "ft_serial: sudden disconnect of {}.", cfg.device );
+                break;
+            }
+
+            RGH_ASSERT_OR( pfd.revents & POLLIN ) continue;
+
+        //# Non-blocking read, returns whatever is available up to the buffer size.
+            byte_t buffer[ 0x400 ];
+            int    bc = 0;
+            RGH_ASSERT_STATUS_OR( this->read( {
+                .dst_ptr    = buffer,
+                .dst_n      = static_cast<int>( sizeof( buffer ) ),
+                .byte_count = &bc
+            } ) ) continue;
+
+            RGH_ASSERT_AND( bc > 0 ) this->_bytes_cb( std::span<const byte_t>{ buffer, static_cast<size_t>( bc ) } );
+
+        } else RGH_ASSERT_AND( plr == 0 ) {
+            /*# Timeout on the poll. */
+        } else {
+            if( errno == EINTR ) continue;
+            RGH_BRDG_LOGE( "ft_serial: bad poll on {}: {}.", cfg.device, std::strerror( errno ) );
+            break;
+        }
+    }
+    RGH_BRDG_LOGW( "ft_serial: poll loop exited on {}.", cfg.device );
+}
+#endif//# RGH_IMPL_SEL_IO_V2_FASTTRACK_SERIAL__POLL_LOOP
+
+#endif//# RGH_TARGET_OS
+
+RGH_IMPL_FNC void Fasttrack_serial::_poll_stop( void ) noexcept {
+    if( not _poll_th.joinable() ) return;
+    _poll_th.request_stop();
+    _poll_th.join();
+    _poll_th = {};
+}
+
+RGH_IMPL_FNC ret_t Fasttrack_serial::uplink( 
+    RGH_IN   serial_config_t   req_cfg_
+) noexcept {
+    RGH_ASSERT_OR( _bytes_cb ) {
+        RGH_BRDG_LOGE( "ft_serial: no bytes callback for uplink to {}.", req_cfg_.device );
+        return RGH_ERR_BADARG;
+    }
+//# The poll thread must not outlive the handle it polls. Restart it on whatever link remains afterwards.
+    this->_poll_stop();
+    const ret_t ret = this->Simple_serial::uplink( std::move( req_cfg_ ) );
+    if( not this->is_uplinked() ) return ret;
+
+    _poll_th = std::jthread{ [ this ] ( std::stop_token stop_tok_ ) -> void { this->_poll_loop( std::move( stop_tok_ ) ); } };
+    RGH_BRDG_LOGI( "ft_serial: poll loop entered on {}.", _config.device );
+    return ret;
+}
+
+RGH_IMPL_FNC ret_t Fasttrack_serial::uplink( 
+    RGH_IN   serial_config_t   req_cfg_,
+    RGH_IN   bytes_cb_t        bytes_cb_
+) noexcept {
+    RGH_ASSERT_OR( bytes_cb_ ) {
+        RGH_BRDG_LOGE( "ft_serial: no bytes callback for uplink to {}.", req_cfg_.device );
+        return RGH_ERR_BADARG;
+    }
+    this->_poll_stop();
+    _bytes_cb = std::move( bytes_cb_ );
+    return this->Fasttrack_serial::uplink( std::move( req_cfg_ ) );
+}
+
+RGH_IMPL_FNC ret_t Fasttrack_serial::downlink( void ) noexcept {
+    this->_poll_stop();
+    return this->Simple_serial::downlink();
+}
+
+#ifndef RGH_IMPL_SEL_IO_V2_FASTTRACK_SERIAL__POLL_LOOP
+#define RGH_IMPL_SEL_IO_V2_FASTTRACK_SERIAL__POLL_LOOP
+RGH_IMPL_FNC void Fasttrack_serial::_poll_loop(
+    RGH_IN_OUT   std::stop_token   stop_tok_
+) noexcept {
+//# Local copy, only used for logging.
+    const serial_config_t cfg = Simple_serial::_config;
+
+    while( not stop_tok_.stop_requested() ) {
+        for(;;) {
+            auto avail = this->rx_q_sz();
+            RGH_ASSERT_OR( avail ) {
+                RGH_BRDG_LOGE( "ft_serial: sudden disconnect of {}.", cfg.device );
+                goto l_exit;
+            }
+            if( *avail == 0 ) break;
+
+            byte_t buffer[ 0x400 ];
+            int    bc = static_cast<int>( std::min<uint32_t>( *avail, sizeof( buffer ) ) );
+            RGH_ASSERT_STATUS_OR( this->read( {
+                .dst_ptr    = buffer,
+                .dst_n      = bc,
+                .byte_count = &bc
+            } ) ) break;
+
+            RGH_ASSERT_OR( bc > 0 ) break;
+            this->_bytes_cb( std::span<const byte_t>{ buffer, static_cast<size_t>( bc ) } );
+        }
+        std::this_thread::sleep_for( std::chrono::milliseconds{ 100 } );
+    }
+
+l_exit:
+    RGH_BRDG_LOGW( "ft_serial: poll loop exited on {}.", cfg.device );
+}
+#endif//# RGH_IMPL_SEL_IO_V2_FASTTRACK_SERIAL__POLL_LOOP
+
+#pragma endregion v2::Fasttrack_serial
+
+}
 #else
     #warning "[RGH] This source file is not compilable."
 #endif//#_RGH_SOURCE_IS_COMPILABLE
