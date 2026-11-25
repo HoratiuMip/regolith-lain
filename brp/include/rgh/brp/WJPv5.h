@@ -124,6 +124,10 @@ int WJP_euclid_effective( const WJP_euclid_context_t* const ctx_ );
 int WJP_euclid_push( WJP_euclid_context_t* const ctx_, const WJP_u8* src_, int len_ );
 
 
+#ifdef WJP_IMPLEMENTATION
+    #define WJP_EUCLID_IMPLEMENTATION
+#endif
+
 #ifdef WJP_EUCLID_IMPLEMENTATION
 
 #if defined(__has_include)
